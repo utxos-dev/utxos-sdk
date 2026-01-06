@@ -36,6 +36,15 @@ export type Web3ProjectCardanoWallet = {
   stakeCredentialHash: string;
 };
 
+export type Web3ProjectWallet = {
+  id: string;
+  key: string;
+  tags: string[];
+  projectId: string;
+  pubKeyHash?: string | null;
+  stakeCredentialHash?: string | null;
+};
+
 export type Web3ProjectSparkWallet = {
   id: string;
   key: string;

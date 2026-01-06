@@ -1,4 +1,4 @@
-import { Web3Sdk } from "@meshsdk/web3-sdk";
+import { Web3Sdk } from "@utxos/sdk";
 
 /**
  * Example: Developer-Controlled Wallet

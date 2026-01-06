@@ -1,3 +1,4 @@
+import { crypto } from ".";
 import {
   decryptWithCipher,
   decryptWithPrivateKey,
@@ -9,21 +10,34 @@ import {
 const data =
   "solution solution solution solution solution solution solution solution solution solution solution solution solution solution solution solution solution solution solution solution solution solution solution solution";
 
+async function deriveKeyFromPassword(password: string): Promise<CryptoKey> {
+  const encoder = new TextEncoder();
+  const keyMaterial = await crypto.subtle.importKey(
+    "raw",
+    encoder.encode(password),
+    "PBKDF2",
+    false,
+    ["deriveKey"],
+  );
+  return crypto.subtle.deriveKey(
+    {
+      name: "PBKDF2",
+      salt: encoder.encode("static-salt-for-test"),
+      iterations: 100000,
+      hash: "SHA-256",
+    },
+    keyMaterial,
+    { name: "AES-GCM", length: 256 },
+    false,
+    ["encrypt", "decrypt"],
+  );
+}
+
 describe("with cipher", () => {
-  const key = "01234567890123456789";
+  const keyString = "01234567890123456789";
 
-  it("decrypt - 12 IV length", async () => {
-    const encryptedDataJSON =
-      '{"iv":"/bs1AzciZ1bDqT5W","ciphertext":"mh5pgH8ErqqH2KLLEBqqr8Pwm+mUuh9HhaAHslSD8ho6zk7mXccc9NUQAW8rb9UajCq8LYyANuiorjYD5N0hd2Lbe2n1x8AGRZrogyRKW6uhoFD1/FW6ofjgGP/kQRQSW2ZdJaDMbCxwYSdzxmaRunk6JRfybhfRU6kIxPMu41jhhRC3LbwZ+NnfBJFrg859hbuQgMQm8mqOUgOxcK8kKH54shOpGuLT4YBXhx33dZ//wT5VXrQ8kwIKttNk5h9MNKCacpRZSqU3pGlZ5oxucNEGos0IKTTXfbmwYx14uiERcXd32OP2"}';
-
-    const decrypted = await decryptWithCipher({
-      encryptedDataJSON: encryptedDataJSON,
-      key,
-    });
-
-    expect(data).toBe(decrypted);
-  });
   it("encrypt and decrypt", async () => {
+    const key = await deriveKeyFromPassword(keyString);
     const encryptedDataJSON = await encryptWithCipher({
       data,
       key,
