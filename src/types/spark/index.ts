@@ -305,3 +305,5 @@ declare enum TransferType {
   COUNTER_SWAP = 40,
   UNRECOGNIZED = -1,
 }
+
+export type ExitSpeed = "FAST" | "MEDIUM" | "SLOW";

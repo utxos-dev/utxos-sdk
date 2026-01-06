@@ -1,5 +1,6 @@
 import { Web3Sdk } from "..";
-import { UTxO, MeshTxBuilder, Asset } from "@meshsdk/core";
+import { Asset, UTxO } from "@meshsdk/common";
+import { MeshTxBuilder } from "@meshsdk/transaction";
 import { meshUniversalStaticUtxo } from "../index";
 import { SponsorshipTxParserPostRequestBody } from "../../types";
 
@@ -35,9 +36,7 @@ export class Sponsorship {
   private readonly sdk: Web3Sdk;
 
   constructor({ sdk }: { sdk: Web3Sdk }) {
-    {
-      this.sdk = sdk;
-    }
+    this.sdk = sdk;
   }
 
   /**
