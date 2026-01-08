@@ -56,9 +56,9 @@ export type TokenizationPolicy = {
 };
 
 /**
- * Parameters for initializing wallet by token ID.
+ * Parameters for initializing tokenization by token ID.
  */
-export type InitWalletParams = { tokenId: string };
+export type InitTokenizationParams = { tokenId: string };
 
 /**
  * Parameters for creating a new token.
@@ -74,7 +74,7 @@ export type CreateTokenParams = {
 
 /**
  * Parameters for minting tokens.
- * Requires initWallet() to be called first.
+ * Requires initTokenization() to be called first.
  */
 export type MintTokensParams = {
   amount: bigint;
@@ -82,7 +82,7 @@ export type MintTokensParams = {
 
 /**
  * Parameters for transferring tokens.
- * Requires initWallet() to be called first.
+ * Requires initTokenization() to be called first.
  */
 export type TransferTokensParams = {
   amount: bigint;
@@ -91,7 +91,7 @@ export type TransferTokensParams = {
 
 /**
  * Parameters for burning tokens.
- * Requires initWallet() to be called first.
+ * Requires initTokenization() to be called first.
  */
 export type BurnTokensParams = {
   amount: bigint;
@@ -99,7 +99,7 @@ export type BurnTokensParams = {
 
 /**
  * Parameters for freezing tokens.
- * Requires initWallet() to be called first.
+ * Requires initTokenization() to be called first.
  */
 export type FreezeTokensParams = {
   address: string;
@@ -108,7 +108,7 @@ export type FreezeTokensParams = {
 
 /**
  * Parameters for unfreezing tokens.
- * Requires initWallet() to be called first.
+ * Requires initTokenization() to be called first.
  */
 export type UnfreezeTokensParams = {
   address: string;
@@ -116,7 +116,7 @@ export type UnfreezeTokensParams = {
 
 /**
  * Parameters for listing transactions.
- * Requires initWallet() to be called first.
+ * Requires initTokenization() to be called first.
  */
 export type ListTransactionsParams = {
   type?: "create" | "mint" | "burn" | "transfer" | "freeze" | "unfreeze";
@@ -126,7 +126,7 @@ export type ListTransactionsParams = {
 
 /**
  * Parameters for listing frozen addresses.
- * Requires initWallet() to be called first.
+ * Requires initTokenization() to be called first.
  */
 export type ListFrozenAddressesParams = {
   includeUnfrozen?: boolean;

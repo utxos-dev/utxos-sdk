@@ -15,7 +15,7 @@ import {
   TokenizationFrozenAddress,
   TokenizationPaginationInfo,
   TokenizationPolicy,
-  InitWalletParams,
+  InitTokenizationParams,
   CreateTokenParams,
   MintTokensParams,
   TransferTokensParams,
@@ -28,7 +28,7 @@ import {
 } from "../../types/spark/tokenization";
 
 export type {
-  InitWalletParams,
+  InitTokenizationParams,
   CreateTokenParams,
   MintTokensParams,
   TransferTokensParams,
@@ -60,7 +60,7 @@ export type {
  * });
  *
  * // Load existing token by token ID
- * const policy = await sdk.tokenization.spark.initWallet({ tokenId: "btknrt1..." });
+ * const policy = await sdk.tokenization.spark.initTokenization({ tokenId: "btknrt1..." });
  *
  * // Perform token operations
  * await sdk.tokenization.spark.mintTokens({ amount: BigInt("1000000") });
@@ -124,14 +124,13 @@ export class TokenizationSpark {
         network: this.walletNetwork,
       },
     });
-    console.log(13, wallet);
 
     this.wallet = wallet;
     this.walletInfo = walletProject;
   }
 
   /**
-   * Initializes the tokenization wallet by token ID.
+   * Initializes the tokenization by token ID.
    *
    * @param params - { tokenId } - the token ID to load
    * @returns The tokenization policy
@@ -139,17 +138,16 @@ export class TokenizationSpark {
    * @example
    * ```typescript
    * // Load existing token by token ID
-   * const policy = await sdk.tokenization.spark.initWallet({ tokenId: "btknrt1..." });
+   * const policy = await sdk.tokenization.spark.initTokenization({ tokenId: "btknrt1..." });
    *
    * // Then perform operations
    * await sdk.tokenization.spark.mintTokens({ amount: BigInt(1000) });
    * ```
    */
-  async initWallet(params: InitWalletParams): Promise<TokenizationPolicy> {
+  async initTokenization(params: InitTokenizationParams): Promise<TokenizationPolicy> {
     const normalizedTokenId = this.normalizeTokenId(params.tokenId);
     const policy = await this.getTokenizationPolicy(normalizedTokenId);
     await this.initWalletByWalletId(policy.walletId);
-    console.log(44);
     return policy;
   }
 
@@ -188,7 +186,7 @@ export class TokenizationSpark {
    * });
    *
    * // Or load existing wallet first
-   * await sdk.tokenization.spark.initWallet({ walletId: "existing-wallet-id" });
+   * await sdk.tokenization.spark.initTokenization({ tokenId: "existing-token-id" });
    * const { tokenId } = await sdk.tokenization.spark.createToken({
    *   tokenName: "MyToken",
    *   tokenTicker: "MTK",
@@ -203,11 +201,12 @@ export class TokenizationSpark {
     walletId: string;
   }> {
     if (!this.wallet || !this.walletInfo) {
-      const { info, cardanoWallet, sparkIssuerWallet } = await this.sdk.wallet.createWallet({
-        tags: ["tokenization"],
+      const { info, sparkIssuerWallet } = await this.sdk.wallet.createWallet({
+        tags: ["tokenization", "spark"],
       });
 
-      this.walletNetwork = this.sdk.network === "mainnet" ? "MAINNET" : "REGTEST";
+      this.walletNetwork =
+        this.sdk.network === "mainnet" ? "MAINNET" : "REGTEST";
       this.walletInfo = info;
       this.wallet = sparkIssuerWallet;
     }
@@ -255,14 +254,14 @@ export class TokenizationSpark {
 
   /**
    * Mints tokens from the issuer wallet.
-   * Requires initWallet() to be called first.
+   * Requires initTokenization() to be called first.
    *
    * @param params - Mint parameters including amount
    * @returns Transaction ID of the mint operation
    */
   async mintTokens(params: MintTokensParams): Promise<string> {
     if (!this.wallet || !this.walletInfo) {
-      throw new Error("No wallet loaded. Call initWallet(walletId) first.");
+      throw new Error("No wallet loaded. Call initTokenization(tokenId) first.");
     }
 
     const txHash = await this.wallet.mintTokens(params.amount);
@@ -285,13 +284,13 @@ export class TokenizationSpark {
 
   /**
    * Gets the token balance for an issuer wallet.
-   * Requires initWallet() to be called first.
+   * Requires initTokenization() to be called first.
    *
    * @returns Balance information
    */
   async getTokenBalance(): Promise<{ balance: string }> {
     if (!this.wallet) {
-      throw new Error("No wallet loaded. Call initWallet(walletId) first.");
+      throw new Error("No wallet loaded. Call initTokenization(tokenId) first.");
     }
     const result = await this.wallet.getIssuerTokenBalance();
     return { balance: result.balance.toString() };
@@ -299,27 +298,27 @@ export class TokenizationSpark {
 
   /**
    * Gets metadata for the token created by an issuer wallet.
-   * Requires initWallet() to be called first.
+   * Requires initTokenization() to be called first.
    *
    * @returns Token metadata
    */
   async getTokenMetadata() {
     if (!this.wallet) {
-      throw new Error("No wallet loaded. Call initWallet(walletId) first.");
+      throw new Error("No wallet loaded. Call initTokenization(tokenId) first.");
     }
     return await this.wallet.getIssuerTokenMetadata();
   }
 
   /**
    * Transfers tokens from the issuer wallet to another address.
-   * Requires initWallet() to be called first.
+   * Requires initTokenization() to be called first.
    *
    * @param params - Transfer parameters
    * @returns Transaction ID of the transfer
    */
   async transferTokens(params: TransferTokensParams): Promise<string> {
     if (!this.wallet || !this.walletInfo) {
-      throw new Error("No wallet loaded. Call initWallet(walletId) first.");
+      throw new Error("No wallet loaded. Call initTokenization(tokenId) first.");
     }
 
     const tokenMetadata = await this.wallet.getIssuerTokenMetadata();
@@ -352,14 +351,14 @@ export class TokenizationSpark {
 
   /**
    * Burns tokens permanently from circulation.
-   * Requires initWallet() to be called first.
+   * Requires initTokenization() to be called first.
    *
    * @param params - Burn parameters
    * @returns Transaction ID of the burn operation
    */
   async burnTokens(params: BurnTokensParams): Promise<string> {
     if (!this.wallet || !this.walletInfo) {
-      throw new Error("No wallet loaded. Call initWallet(walletId) first.");
+      throw new Error("No wallet loaded. Call initTokenization(tokenId) first.");
     }
 
     const txHash = await this.wallet.burnTokens(params.amount);
@@ -382,14 +381,14 @@ export class TokenizationSpark {
 
   /**
    * Freezes tokens at a specific Spark address for compliance purposes.
-   * Requires initWallet() to be called first.
+   * Requires initTokenization() to be called first.
    *
    * @param params - Freeze parameters
    * @returns Freeze operation results
    */
   async freezeTokens(params: FreezeTokensParams): Promise<SparkFreezeResult> {
     if (!this.wallet || !this.walletInfo) {
-      throw new Error("No wallet loaded. Call initWallet(walletId) first.");
+      throw new Error("No wallet loaded. Call initTokenization(tokenId) first.");
     }
 
     const result = await this.wallet.freezeTokens(params.address);
@@ -443,7 +442,7 @@ export class TokenizationSpark {
 
   /**
    * Unfreezes tokens at a specific Spark address.
-   * Requires initWallet() to be called first.
+   * Requires initTokenization() to be called first.
    *
    * @param params - Unfreeze parameters
    * @returns Unfreeze operation results
@@ -452,7 +451,7 @@ export class TokenizationSpark {
     params: UnfreezeTokensParams,
   ): Promise<SparkFreezeResult> {
     if (!this.wallet || !this.walletInfo) {
-      throw new Error("No wallet loaded. Call initWallet(walletId) first.");
+      throw new Error("No wallet loaded. Call initTokenization(tokenId) first.");
     }
 
     const result = await this.wallet.unfreezeTokens(params.address);
@@ -501,7 +500,7 @@ export class TokenizationSpark {
 
   /**
    * Lists frozen addresses for a token from the database.
-   * Requires initWallet() to be called first.
+   * Requires initTokenization() to be called first.
    *
    * @param params - Query parameters including pagination
    * @returns List of frozen addresses with pagination info
@@ -511,7 +510,7 @@ export class TokenizationSpark {
     pagination: TokenizationPaginationInfo;
   }> {
     if (!this.wallet) {
-      throw new Error("No wallet loaded. Call initWallet(walletId) first.");
+      throw new Error("No wallet loaded. Call initTokenization(tokenId) first.");
     }
 
     const { includeUnfrozen = false, page = 1, limit = 15 } = params || {};
@@ -546,7 +545,7 @@ export class TokenizationSpark {
 
   /**
    * Lists token transactions from the database.
-   * Requires initWallet() to be called first.
+   * Requires initTokenization() to be called first.
    *
    * @param params - Query parameters including type filter and pagination
    * @returns List of transactions with pagination info
@@ -556,7 +555,7 @@ export class TokenizationSpark {
     pagination: TokenizationPaginationInfo;
   }> {
     if (!this.wallet) {
-      throw new Error("No wallet loaded. Call initWallet(walletId) first.");
+      throw new Error("No wallet loaded. Call initTokenization(tokenId) first.");
     }
 
     const { type, page = 1, limit = 50 } = params || {};
