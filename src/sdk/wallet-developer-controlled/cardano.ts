@@ -1,7 +1,7 @@
 import { Web3Sdk } from "..";
 import { MeshWallet } from "@meshsdk/wallet";
 import { decryptWithPrivateKey } from "../../functions";
-import { Web3ProjectCardanoWallet, TokenCreationParams } from "../../types";
+import { MultiChainWalletInfo, TokenCreationParams } from "../../types";
 
 /**
  * CardanoWalletDeveloperControlled - Manages Cardano-specific developer-controlled wallets.
@@ -43,13 +43,13 @@ export class CardanoWalletDeveloperControlled {
    * console.log(`Found ${wallets.length} Cardano wallets`);
    * ```
    */
-  async getWallets(): Promise<Web3ProjectCardanoWallet[]> {
+  async getWallets(): Promise<MultiChainWalletInfo[]> {
     const { data, status } = await this.sdk.axiosInstance.get(
       `api/project-wallet/${this.sdk.projectId}/cardano`,
     );
 
     if (status === 200) {
-      return data as Web3ProjectCardanoWallet[];
+      return data as MultiChainWalletInfo[];
     }
 
     throw new Error("Failed to get Cardano wallets");
@@ -73,7 +73,7 @@ export class CardanoWalletDeveloperControlled {
     walletId: string,
     decryptKey = false,
   ): Promise<{
-    info: Web3ProjectCardanoWallet;
+    info: MultiChainWalletInfo;
     wallet: MeshWallet;
   }> {
     if (this.sdk.privateKey === undefined) {
@@ -85,7 +85,7 @@ export class CardanoWalletDeveloperControlled {
     );
 
     if (status === 200) {
-      const web3Wallet = data as Web3ProjectCardanoWallet;
+      const web3Wallet = data as MultiChainWalletInfo;
 
       const mnemonic = await decryptWithPrivateKey({
         privateKey: this.sdk.privateKey,
@@ -125,7 +125,7 @@ export class CardanoWalletDeveloperControlled {
    * const wallets = await sdk.wallet.cardano.getWalletsByTag("treasury");
    * ```
    */
-  async getWalletsByTag(tag: string): Promise<Web3ProjectCardanoWallet[]> {
+  async getWalletsByTag(tag: string): Promise<MultiChainWalletInfo[]> {
     if (this.sdk.privateKey === undefined) {
       throw new Error("Private key not found");
     }
@@ -135,7 +135,7 @@ export class CardanoWalletDeveloperControlled {
     );
 
     if (status === 200) {
-      return data as Web3ProjectCardanoWallet[];
+      return data as MultiChainWalletInfo[];
     }
 
     throw new Error("Failed to get Cardano wallets by tag");

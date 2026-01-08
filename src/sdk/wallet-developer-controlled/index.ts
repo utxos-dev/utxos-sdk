@@ -122,17 +122,15 @@ export class WalletDeveloperControlled {
     const sparkWallet =
       networkId === 1 ? sparkMainnetWallet : sparkRegtestWallet;
 
-    const walletData = {
+    const walletData: MultiChainWalletInfo = {
       id: walletId,
       projectId: this.sdk.projectId,
       tags: options.tags || [],
       key: encryptedKey,
-      networkId,
       chains: {
         cardano: { pubKeyHash, stakeCredentialHash },
         spark: { mainnetPublicKey, regtestPublicKey },
       },
-      createdAt: new Date().toISOString(),
     };
 
     const { status } = await this.sdk.axiosInstance.post(
@@ -142,7 +140,7 @@ export class WalletDeveloperControlled {
 
     if (status === 200) {
       return {
-        info: walletData as MultiChainWalletInfo,
+        info: walletData,
         sparkIssuerWallet: sparkWallet,
         cardanoWallet: cardanoWallet,
       };
@@ -259,11 +257,7 @@ export class WalletDeveloperControlled {
       instance.cardanoWallet = cardanoWallet;
     }
 
-    if (
-      (chain === "spark" || !chain) &&
-      walletInfo.chains.spark &&
-      mnemonic
-    ) {
+    if ((chain === "spark" || !chain) && walletInfo.chains.spark && mnemonic) {
       const sparkNetwork = networkId === 1 ? "MAINNET" : "REGTEST";
       const { wallet: sparkWallet } = await IssuerSparkWallet.initialize({
         mnemonicOrSeed: mnemonic,

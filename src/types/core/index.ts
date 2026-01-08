@@ -27,33 +27,6 @@ export type Web3ProjectBranding = {
   appleEnabled?: boolean;
 };
 
-export type Web3ProjectCardanoWallet = {
-  id: string;
-  key: string;
-  tags: string[];
-  projectId: string;
-  pubKeyHash: string;
-  stakeCredentialHash: string;
-};
-
-export type Web3ProjectWallet = {
-  id: string;
-  key: string;
-  tags: string[];
-  projectId: string;
-  pubKeyHash?: string | null;
-  stakeCredentialHash?: string | null;
-};
-
-export type Web3ProjectSparkWallet = {
-  id: string;
-  key: string;
-  tags: string[];
-  projectId: string;
-  publicKey: string;
-  network: "MAINNET" | "REGTEST";
-};
-
 export type Web3JWTBody = {
   /** User's ID */
   sub: string;

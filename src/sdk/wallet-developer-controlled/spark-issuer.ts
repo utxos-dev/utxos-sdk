@@ -1,5 +1,5 @@
 import { Web3Sdk } from "..";
-import { Web3ProjectSparkWallet } from "../../types";
+import { MultiChainWalletInfo } from "../../types";
 
 /**
  * SparkIssuerWalletDeveloperControlled - Developer-controlled Spark issuer wallet management
@@ -37,14 +37,14 @@ export class SparkIssuerWalletDeveloperControlled {
    * const walletInfo = await sdk.wallet.sparkIssuer.get("existing-wallet-id");
    * ```
    */
-  async getWallet(walletId: string): Promise<Web3ProjectSparkWallet> {
+  async getWallet(walletId: string): Promise<MultiChainWalletInfo> {
     const networkParam = this.sdk.network === "mainnet" ? "mainnet" : "regtest";
     const { data, status } = await this.sdk.axiosInstance.get(
       `api/project-wallet/${this.sdk.projectId}/${walletId}?chain=spark&network=${networkParam}`,
     );
 
     if (status === 200) {
-      return data as Web3ProjectSparkWallet;
+      return data as MultiChainWalletInfo;
     }
 
     throw new Error("Failed to get Spark wallet");
@@ -63,13 +63,13 @@ export class SparkIssuerWalletDeveloperControlled {
    * wallets.forEach(w => console.log(`- ${w.id}: tags=[${w.tags.join(', ')}]`));
    * ```
    */
-  async list(): Promise<Web3ProjectSparkWallet[]> {
+  async list(): Promise<MultiChainWalletInfo[]> {
     const { data, status } = await this.sdk.axiosInstance.get(
       `api/project-wallet/${this.sdk.projectId}/spark`,
     );
 
     if (status === 200) {
-      return data as Web3ProjectSparkWallet[];
+      return data as MultiChainWalletInfo[];
     }
 
     throw new Error("Failed to get Spark wallets");
@@ -86,13 +86,13 @@ export class SparkIssuerWalletDeveloperControlled {
    * const wallets = await sdk.wallet.sparkIssuer.getByTag("tokenization");
    * ```
    */
-  async getByTag(tag: string): Promise<Web3ProjectSparkWallet[]> {
+  async getByTag(tag: string): Promise<MultiChainWalletInfo[]> {
     const { data, status } = await this.sdk.axiosInstance.get(
       `api/project-wallet/${this.sdk.projectId}/spark/tag/${tag}`,
     );
 
     if (status === 200) {
-      return data as Web3ProjectSparkWallet[];
+      return data as MultiChainWalletInfo[];
     }
 
     throw new Error("Failed to get Spark wallets by tag");

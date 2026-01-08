@@ -22,7 +22,6 @@ export interface MultiChainWalletInfo {
   projectId: string;
   tags: string[];
   key: string;
-  networkId: NetworkId;
   chains: {
     cardano?: {
       pubKeyHash: string;
@@ -33,7 +32,6 @@ export interface MultiChainWalletInfo {
       regtestPublicKey: string;
     };
   };
-  createdAt: string;
 }
 
 /**

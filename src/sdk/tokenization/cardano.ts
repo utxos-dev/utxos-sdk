@@ -1,6 +1,6 @@
 import { Web3Sdk } from "..";
 import { decryptWithPrivateKey } from "../../functions";
-import { Web3ProjectCardanoWallet } from "../../types";
+import { MultiChainWalletInfo } from "../../types";
 import { MeshWallet } from "@meshsdk/wallet";
 import {
   TokenizationTransaction,
@@ -37,13 +37,13 @@ export type {
 export class TokenizationCardano {
   private readonly sdk: Web3Sdk;
   private wallet: MeshWallet | null = null;
-  private walletInfo: Web3ProjectCardanoWallet | null = null;
+  private walletInfo: MultiChainWalletInfo | null = null;
 
   constructor({ sdk }: { sdk: Web3Sdk }) {
     this.sdk = sdk;
   }
 
-  setWallet(wallet: MeshWallet, walletInfo: Web3ProjectCardanoWallet): void {
+  setWallet(wallet: MeshWallet, walletInfo: MultiChainWalletInfo): void {
     this.wallet = wallet;
     this.walletInfo = walletInfo;
   }
@@ -66,7 +66,7 @@ export class TokenizationCardano {
       throw new Error("Failed to get Cardano wallet");
     }
 
-    const walletInfo = data as Web3ProjectCardanoWallet;
+    const walletInfo = data as MultiChainWalletInfo;
 
     const mnemonic = await decryptWithPrivateKey({
       privateKey: this.sdk.privateKey,
@@ -293,7 +293,7 @@ export class TokenizationCardano {
 
   private async logTransaction(params: {
     tokenId: string;
-    walletInfo: Web3ProjectCardanoWallet;
+    walletInfo: MultiChainWalletInfo;
     type: "create" | "mint" | "burn" | "transfer" | "freeze" | "unfreeze";
     txHash?: string;
     amount?: string;

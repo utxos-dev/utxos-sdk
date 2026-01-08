@@ -1,6 +1,6 @@
 import { Web3Sdk } from "..";
 import { decryptWithPrivateKey } from "../../functions";
-import { Web3ProjectSparkWallet } from "../../types";
+import { MultiChainWalletInfo } from "../../types";
 import { IssuerSparkWallet } from "@buildonspark/issuer-sdk";
 import { v4 as uuidv4 } from "uuid";
 import {
@@ -70,7 +70,8 @@ export type {
 export class TokenizationSpark {
   private readonly sdk: Web3Sdk;
   private wallet: IssuerSparkWallet | null = null;
-  private walletInfo: Web3ProjectSparkWallet | null = null;
+  private walletInfo: MultiChainWalletInfo | null = null;
+  private walletNetwork: "MAINNET" | "REGTEST" = "MAINNET";
 
   constructor({ sdk }: { sdk: Web3Sdk }) {
     this.sdk = sdk;
@@ -105,7 +106,8 @@ export class TokenizationSpark {
       throw new Error("Failed to get Spark wallet");
     }
 
-    const walletInfo = data as Web3ProjectSparkWallet;
+    const walletProject = data as MultiChainWalletInfo;
+    this.walletNetwork = this.sdk.network === "mainnet" ? "MAINNET" : "REGTEST";
 
     if (this.sdk.privateKey === undefined) {
       throw new Error("Private key not found - required to decrypt wallet");
@@ -113,16 +115,19 @@ export class TokenizationSpark {
 
     const mnemonic = await decryptWithPrivateKey({
       privateKey: this.sdk.privateKey,
-      encryptedDataJSON: walletInfo.key,
+      encryptedDataJSON: walletProject.key,
     });
 
     const { wallet } = await IssuerSparkWallet.initialize({
       mnemonicOrSeed: mnemonic,
-      options: { network: walletInfo.network },
+      options: {
+        network: this.walletNetwork,
+      },
     });
+    console.log(13, wallet);
 
     this.wallet = wallet;
-    this.walletInfo = walletInfo;
+    this.walletInfo = walletProject;
   }
 
   /**
@@ -144,6 +149,7 @@ export class TokenizationSpark {
     const normalizedTokenId = this.normalizeTokenId(params.tokenId);
     const policy = await this.getTokenizationPolicy(normalizedTokenId);
     await this.initWalletByWalletId(policy.walletId);
+    console.log(44);
     return policy;
   }
 
@@ -154,7 +160,10 @@ export class TokenizationSpark {
   private normalizeTokenId(tokenId: string): string {
     const network = this.sdk.network === "mainnet" ? "MAINNET" : "REGTEST";
     try {
-      const decoded = decodeBech32mTokenIdentifier(tokenId as Bech32mTokenIdentifier, network);
+      const decoded = decodeBech32mTokenIdentifier(
+        tokenId as Bech32mTokenIdentifier,
+        network,
+      );
       return Buffer.from(decoded.tokenIdentifier).toString("hex");
     } catch {
       return tokenId;
@@ -194,22 +203,12 @@ export class TokenizationSpark {
     walletId: string;
   }> {
     if (!this.wallet || !this.walletInfo) {
-      const { info, sparkIssuerWallet } = await this.sdk.wallet.createWallet({
+      const { info, cardanoWallet, sparkIssuerWallet } = await this.sdk.wallet.createWallet({
         tags: ["tokenization"],
       });
 
-      const networkParam = this.sdk.network === "mainnet" ? "MAINNET" : "REGTEST";
-      this.walletInfo = {
-        id: info.id,
-        key: info.key,
-        tags: info.tags,
-        projectId: info.projectId,
-        publicKey:
-          networkParam === "MAINNET"
-            ? info.chains.spark?.mainnetPublicKey || ""
-            : info.chains.spark?.regtestPublicKey || "",
-        network: networkParam,
-      };
+      this.walletNetwork = this.sdk.network === "mainnet" ? "MAINNET" : "REGTEST";
+      this.walletInfo = info;
       this.wallet = sparkIssuerWallet;
     }
 
@@ -222,11 +221,12 @@ export class TokenizationSpark {
     });
 
     const tokenMetadata = await this.wallet.getIssuerTokenMetadata();
-    const tokenIdHex = Buffer.from(tokenMetadata.rawTokenIdentifier).toString("hex");
-    const network = this.walletInfo.network === "MAINNET" ? "MAINNET" : "REGTEST";
+    const tokenIdHex = Buffer.from(tokenMetadata.rawTokenIdentifier).toString(
+      "hex",
+    );
     const tokenId = encodeBech32mTokenIdentifier({
       tokenIdentifier: tokenMetadata.rawTokenIdentifier,
-      network,
+      network: this.walletNetwork,
     });
 
     // Save tokenization policy to database
@@ -236,7 +236,7 @@ export class TokenizationSpark {
         projectId: this.sdk.projectId,
         walletId: this.walletInfo.id,
         chain: "spark",
-        network: this.walletInfo.network.toLowerCase(),
+        network: this.walletNetwork.toLowerCase(),
       });
 
       // Log the create transaction
@@ -268,7 +268,9 @@ export class TokenizationSpark {
     const txHash = await this.wallet.mintTokens(params.amount);
 
     const tokenMetadata = await this.wallet.getIssuerTokenMetadata();
-    const tokenId = Buffer.from(tokenMetadata.rawTokenIdentifier).toString("hex");
+    const tokenId = Buffer.from(tokenMetadata.rawTokenIdentifier).toString(
+      "hex",
+    );
 
     await this.logTransaction({
       txId: txHash,
@@ -321,11 +323,12 @@ export class TokenizationSpark {
     }
 
     const tokenMetadata = await this.wallet.getIssuerTokenMetadata();
-    const tokenId = Buffer.from(tokenMetadata.rawTokenIdentifier).toString("hex");
-    const network = this.walletInfo.network === "MAINNET" ? "MAINNET" : "REGTEST";
+    const tokenId = Buffer.from(tokenMetadata.rawTokenIdentifier).toString(
+      "hex",
+    );
     const bech32mTokenId = encodeBech32mTokenIdentifier({
       tokenIdentifier: tokenMetadata.rawTokenIdentifier,
-      network,
+      network: this.walletNetwork,
     });
     const txHash = await this.wallet.transferTokens({
       tokenIdentifier: bech32mTokenId,
@@ -362,7 +365,9 @@ export class TokenizationSpark {
     const txHash = await this.wallet.burnTokens(params.amount);
 
     const tokenMetadata = await this.wallet.getIssuerTokenMetadata();
-    const tokenId = Buffer.from(tokenMetadata.rawTokenIdentifier).toString("hex");
+    const tokenId = Buffer.from(tokenMetadata.rawTokenIdentifier).toString(
+      "hex",
+    );
 
     await this.logTransaction({
       txId: txHash,
@@ -390,13 +395,17 @@ export class TokenizationSpark {
     const result = await this.wallet.freezeTokens(params.address);
 
     const tokenMetadata = await this.wallet.getIssuerTokenMetadata();
-    const tokenId = Buffer.from(tokenMetadata.rawTokenIdentifier).toString("hex");
+    const tokenId = Buffer.from(tokenMetadata.rawTokenIdentifier).toString(
+      "hex",
+    );
 
     try {
       const publicKeyHash = extractIdentityPublicKey(params.address);
 
       if (!publicKeyHash) {
-        throw new Error(`Failed to extract public key hash from Spark address: ${params.address}`);
+        throw new Error(
+          `Failed to extract public key hash from Spark address: ${params.address}`,
+        );
       }
 
       // Update frozen addresses table
@@ -405,7 +414,7 @@ export class TokenizationSpark {
         projectId: this.sdk.projectId,
         projectWalletId: this.walletInfo.id,
         chain: "spark",
-        network: this.walletInfo.network.toLowerCase(),
+        network: this.walletNetwork.toLowerCase(),
         publicKeyHash,
         isFrozen: true,
         freezeReason: params.freezeReason || "Frozen by issuer",
@@ -422,7 +431,6 @@ export class TokenizationSpark {
         toAddress: params.address,
         amount: result.impactedTokenAmount.toString(),
       });
-      
     } catch (saveError) {
       console.warn("Failed to save freeze operation:", saveError);
     }
@@ -440,7 +448,9 @@ export class TokenizationSpark {
    * @param params - Unfreeze parameters
    * @returns Unfreeze operation results
    */
-  async unfreezeTokens(params: UnfreezeTokensParams): Promise<SparkFreezeResult> {
+  async unfreezeTokens(
+    params: UnfreezeTokensParams,
+  ): Promise<SparkFreezeResult> {
     if (!this.wallet || !this.walletInfo) {
       throw new Error("No wallet loaded. Call initWallet(walletId) first.");
     }
@@ -448,13 +458,17 @@ export class TokenizationSpark {
     const result = await this.wallet.unfreezeTokens(params.address);
 
     const tokenMetadata = await this.wallet.getIssuerTokenMetadata();
-    const tokenId = Buffer.from(tokenMetadata.rawTokenIdentifier).toString("hex");
+    const tokenId = Buffer.from(tokenMetadata.rawTokenIdentifier).toString(
+      "hex",
+    );
 
     try {
       const publicKeyHash = extractIdentityPublicKey(params.address);
 
       if (!publicKeyHash) {
-        throw new Error(`Failed to extract public key hash from Spark address: ${params.address}`);
+        throw new Error(
+          `Failed to extract public key hash from Spark address: ${params.address}`,
+        );
       }
 
       // Update frozen addresses table
@@ -503,7 +517,9 @@ export class TokenizationSpark {
     const { includeUnfrozen = false, page = 1, limit = 15 } = params || {};
 
     const tokenMetadata = await this.wallet.getIssuerTokenMetadata();
-    const tokenId = Buffer.from(tokenMetadata.rawTokenIdentifier).toString("hex");
+    const tokenId = Buffer.from(tokenMetadata.rawTokenIdentifier).toString(
+      "hex",
+    );
 
     const { data, status } = await this.sdk.axiosInstance.get(
       `api/tokenization/frozen-addresses`,
@@ -515,7 +531,7 @@ export class TokenizationSpark {
           page,
           limit,
         },
-      }
+      },
     );
 
     if (status === 200) {
@@ -546,7 +562,9 @@ export class TokenizationSpark {
     const { type, page = 1, limit = 50 } = params || {};
 
     const tokenMetadata = await this.wallet.getIssuerTokenMetadata();
-    const tokenId = Buffer.from(tokenMetadata.rawTokenIdentifier).toString("hex");
+    const tokenId = Buffer.from(tokenMetadata.rawTokenIdentifier).toString(
+      "hex",
+    );
 
     const { data, status } = await this.sdk.axiosInstance.get(
       `api/tokenization/transactions`,
@@ -558,7 +576,7 @@ export class TokenizationSpark {
           page,
           limit,
         },
-      }
+      },
     );
 
     if (status === 200) {
@@ -577,7 +595,9 @@ export class TokenizationSpark {
    * @param params - Optional filter and pagination parameters
    * @returns List of tokenization policies with pagination info
    */
-  async getTokenizationPolicies(params?: ListTokenizationPoliciesParams): Promise<{
+  async getTokenizationPolicies(
+    params?: ListTokenizationPoliciesParams,
+  ): Promise<{
     tokens: TokenizationPolicy[];
     pagination: TokenizationPaginationInfo;
   }> {
@@ -592,7 +612,7 @@ export class TokenizationSpark {
           page,
           limit,
         },
-      }
+      },
     );
 
     if (status === 200) {
@@ -612,7 +632,10 @@ export class TokenizationSpark {
    * @returns The tokenization policy
    */
   async getTokenizationPolicy(tokenId: string): Promise<TokenizationPolicy> {
-    const { tokens } = await this.getTokenizationPolicies({ tokenId, limit: 1 });
+    const { tokens } = await this.getTokenizationPolicies({
+      tokenId,
+      limit: 1,
+    });
     const policy = tokens[0];
 
     if (!policy) {
@@ -628,7 +651,7 @@ export class TokenizationSpark {
   private async logTransaction(params: {
     txId: string;
     tokenId: string;
-    walletInfo: Web3ProjectSparkWallet;
+    walletInfo: MultiChainWalletInfo;
     type: "create" | "mint" | "burn" | "transfer" | "freeze" | "unfreeze";
     amount?: string;
     fromAddress?: string;
@@ -643,7 +666,7 @@ export class TokenizationSpark {
         projectWalletId: params.walletInfo.id,
         type: params.type,
         chain: "spark",
-        network: params.walletInfo.network.toLowerCase(),
+        network: this.walletNetwork.toLowerCase(),
         amount: params.amount,
         fromAddress: params.fromAddress,
         toAddress: params.toAddress,
