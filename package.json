@@ -28,7 +28,7 @@
   "scripts": {
     "build:sdk": "tsup src/index.ts --format esm,cjs --dts",
     "dev": "tsup src/index.ts --format esm,cjs --watch --dts",
-    "test": "jest"
+    "test": "npx jest"
   },
   "devDependencies": {
     "@types/base32-encoding": "^1.0.2",
@@ -41,6 +41,7 @@
     "typescript": "^5.3.3"
   },
   "dependencies": {
+    "@utxos/api-contracts": "*",
     "@buildonspark/issuer-sdk": "^0.1.5",
     "@buildonspark/spark-sdk": "0.5.0",
     "@meshsdk/bitcoin": "1.9.0-beta.89",

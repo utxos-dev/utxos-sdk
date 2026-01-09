@@ -1,5 +1,10 @@
 import { MeshWallet } from "@meshsdk/wallet";
 import { IssuerSparkWallet } from "@buildonspark/issuer-sdk";
+import {
+  MultiChainWalletInfo as ContractWalletInfo,
+  validateMultiChainWalletInfo,
+  isValidMultiChainWalletInfo,
+} from "@utxos/api-contracts";
 
 /**
  * Standardized network ID type (0 = testnet, 1 = mainnet)
@@ -16,23 +21,12 @@ export interface MultiChainWalletOptions {
 
 /**
  * Multi-chain wallet information - one wallet per project with all chain keys
+ * Type is imported from shared API contracts to ensure SDK/API compatibility.
  */
-export interface MultiChainWalletInfo {
-  id: string;
-  projectId: string;
-  tags: string[];
-  key: string;
-  chains: {
-    cardano?: {
-      pubKeyHash: string;
-      stakeCredentialHash: string;
-    };
-    spark?: {
-      mainnetPublicKey: string;
-      regtestPublicKey: string;
-    };
-  };
-}
+export type MultiChainWalletInfo = ContractWalletInfo;
+
+// Re-export validation utilities for runtime checking
+export { validateMultiChainWalletInfo, isValidMultiChainWalletInfo };
 
 /**
  * Multi-chain wallet instance with initialized wallet objects
