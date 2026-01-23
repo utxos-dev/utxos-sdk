@@ -31,9 +31,14 @@ async function main() {
 
   // === LIST WALLETS ===
 
-  console.log("\nListing all project wallets...");
-  const wallets = await sdk.wallet.getProjectWallets();
-  console.log(`Found ${wallets.length} wallets`);
+  console.log("\nListing project wallets (paginated)...");
+  const { data: wallets, pagination } = await sdk.wallet.getProjectWallets();
+  console.log(`Found ${wallets.length} wallets on page ${pagination.page} of ${pagination.totalPages}`);
+  console.log(`Total wallets: ${pagination.totalCount}`);
+
+  // Or get all wallets at once
+  const allWallets = await sdk.wallet.getAllProjectWallets();
+  console.log(`All wallets: ${allWallets.length}`);
 
   // === GET WALLET BY CHAIN ===
 

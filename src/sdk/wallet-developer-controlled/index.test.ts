@@ -553,32 +553,61 @@ describe("WalletDeveloperControlled", () => {
   });
 
   describe("getProjectWallets", () => {
-    it("fetches all wallets for project", async () => {
+    it("fetches wallets with pagination", async () => {
       const mockWallets = [
         { id: "wallet-1", projectId: "test-project-id" },
         { id: "wallet-2", projectId: "test-project-id" },
       ];
+      const mockResponse = {
+        data: mockWallets,
+        pagination: { page: 1, pageSize: 10, totalCount: 2, totalPages: 1 },
+      };
       mockAxiosInstance.get.mockResolvedValue({
         status: 200,
-        data: mockWallets,
+        data: mockResponse,
       });
       const wallet = new WalletDeveloperControlled({ sdk: mockSdk });
 
       const result = await wallet.getProjectWallets();
 
       expect(mockAxiosInstance.get).toHaveBeenCalledWith(
-        "api/project-wallet/test-project-id",
+        "api/project-wallet/test-project-id?page=1",
       );
-      expect(result).toEqual(mockWallets);
+      expect(result.data).toEqual(mockWallets);
+      expect(result.pagination.totalCount).toBe(2);
+    });
+
+    it("fetches specific page", async () => {
+      const mockResponse = {
+        data: [{ id: "wallet-3", projectId: "test-project-id" }],
+        pagination: { page: 2, pageSize: 10, totalCount: 4, totalPages: 2 },
+      };
+      mockAxiosInstance.get.mockResolvedValue({
+        status: 200,
+        data: mockResponse,
+      });
+      const wallet = new WalletDeveloperControlled({ sdk: mockSdk });
+
+      const result = await wallet.getProjectWallets({ page: 2 });
+
+      expect(mockAxiosInstance.get).toHaveBeenCalledWith(
+        "api/project-wallet/test-project-id?page=2",
+      );
+      expect(result.pagination.page).toBe(2);
     });
 
     it("returns empty array when no wallets", async () => {
-      mockAxiosInstance.get.mockResolvedValue({ status: 200, data: [] });
+      const mockResponse = {
+        data: [],
+        pagination: { page: 1, pageSize: 10, totalCount: 0, totalPages: 0 },
+      };
+      mockAxiosInstance.get.mockResolvedValue({ status: 200, data: mockResponse });
       const wallet = new WalletDeveloperControlled({ sdk: mockSdk });
 
       const result = await wallet.getProjectWallets();
 
-      expect(result).toEqual([]);
+      expect(result.data).toEqual([]);
+      expect(result.pagination.totalCount).toBe(0);
     });
 
     it("throws if API call fails", async () => {
@@ -588,6 +617,34 @@ describe("WalletDeveloperControlled", () => {
       await expect(wallet.getProjectWallets()).rejects.toThrow(
         "Failed to get project wallets",
       );
+    });
+  });
+
+  describe("getAllProjectWallets", () => {
+    it("fetches all wallets across pages", async () => {
+      const wallet = new WalletDeveloperControlled({ sdk: mockSdk });
+
+      // First page
+      mockAxiosInstance.get.mockResolvedValueOnce({
+        status: 200,
+        data: {
+          data: [{ id: "wallet-1" }, { id: "wallet-2" }, { id: "wallet-3" }],
+          pagination: { page: 1, pageSize: 10, totalCount: 5, totalPages: 2 },
+        },
+      });
+      // Second page
+      mockAxiosInstance.get.mockResolvedValueOnce({
+        status: 200,
+        data: {
+          data: [{ id: "wallet-4" }, { id: "wallet-5" }],
+          pagination: { page: 2, pageSize: 10, totalCount: 5, totalPages: 2 },
+        },
+      });
+
+      const result = await wallet.getAllProjectWallets();
+
+      expect(result).toHaveLength(5);
+      expect(mockAxiosInstance.get).toHaveBeenCalledTimes(2);
     });
   });
 });
