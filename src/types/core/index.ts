@@ -27,15 +27,6 @@ export type Web3ProjectBranding = {
   appleEnabled?: boolean;
 };
 
-export type Web3ProjectWallet = {
-  id: string;
-  key: string;
-  tags: string[];
-  projectId: string;
-  pubKeyHash: string;
-  stakeCredentialHash: string;
-};
-
 export type Web3JWTBody = {
   /** User's ID */
   sub: string;
@@ -66,3 +57,5 @@ export type SponsorshipTxParserPostRequestBody = {
   sponsorUtxo: string;
   network: "mainnet" | "testnet";
 };
+
+export * from "./multi-chain";

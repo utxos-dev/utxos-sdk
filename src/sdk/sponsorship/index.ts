@@ -1,5 +1,5 @@
 import { Web3Sdk } from "..";
-import { UTxO } from "@meshsdk/common";
+import { Asset, UTxO } from "@meshsdk/common";
 import { MeshTxBuilder } from "@meshsdk/transaction";
 import { meshUniversalStaticUtxo } from "../index";
 import { SponsorshipTxParserPostRequestBody } from "../../types";
@@ -36,9 +36,7 @@ export class Sponsorship {
   private readonly sdk: Web3Sdk;
 
   constructor({ sdk }: { sdk: Web3Sdk }) {
-    {
-      this.sdk = sdk;
-    }
+    this.sdk = sdk;
   }
 
   /**
@@ -214,11 +212,13 @@ export class Sponsorship {
 
       if (!isUtxoUsed) {
         selectedUtxo = _selectedUtxo;
-        await this.dbAppendUtxosUsed(
-          config,
-          selectedUtxo.input.txHash,
-          selectedUtxo.input.outputIndex,
-        );
+        if (selectedUtxo) {
+          await this.dbAppendUtxosUsed(
+            config,
+            selectedUtxo.input.txHash,
+            selectedUtxo.input.outputIndex,
+          );
+        }
       }
     }
 
@@ -339,9 +339,8 @@ export class Sponsorship {
   }
 
   private async getSponsorWallet(projectWalletId: string) {
-    const networkId = this.sdk.network === "mainnet" ? 1 : 0;
-    const wallet = await this.sdk.wallet.getWallet(projectWalletId, networkId);
-    return wallet.wallet;
+    const walletResult = await this.sdk.wallet.cardano.getWallet(projectWalletId);
+    return walletResult.wallet;
   }
 
   /**
@@ -443,7 +442,7 @@ export class Sponsorship {
     // Add balance from UTXOs that are not the exact sponsor amount
     for (const utxo of utxosAsInput) {
       const lovelaceAmount = utxo.output.amount.find(
-        (amount) => amount.unit === "lovelace",
+        (amount: Asset) => amount.unit === "lovelace",
       );
       if (lovelaceAmount) {
         totalBalance += parseInt(lovelaceAmount.quantity);
@@ -453,7 +452,7 @@ export class Sponsorship {
     // Add balance from UTXOs that were pending for too long
     for (const utxo of utxosNotSpentAfterDuration) {
       const lovelaceAmount = utxo.output.amount.find(
-        (amount) => amount.unit === "lovelace",
+        (amount: Asset) => amount.unit === "lovelace",
       );
       if (lovelaceAmount) {
         totalBalance += parseInt(lovelaceAmount.quantity);
