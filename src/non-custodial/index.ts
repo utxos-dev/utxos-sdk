@@ -571,6 +571,59 @@ export class Web3NonCustodialProvider {
     };
   }
 
+  /**
+   * Sends OTP to email address
+   * @param email - The email address to send OTP to
+   * @returns Promise that resolves when OTP is sent
+   */
+  async sendEmailOtp(email: string): Promise<{ error: Error | null }> {
+    const res = await fetch(this.appOrigin + "/api/auth/email/send-otp", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, projectId: this.projectId }),
+    });
+
+    if (!res.ok) {
+      const data = await res.json();
+      return { error: new Error(data.error) };
+    }
+
+    return { error: null };
+  }
+
+  /**
+   * Verifies OTP and stores JWT (same pattern as OAuth callback)
+   * @param email - The email address used to send OTP
+   * @param code - The 6-digit OTP code
+   * @returns User data on success, error on failure
+   */
+  async verifyEmailOtp(
+    email: string,
+    code: string,
+  ): Promise<
+    | { data: Web3NonCustodialProviderUser; error: null }
+    | { data: null; error: Error }
+  > {
+    const res = await fetch(this.appOrigin + "/api/auth/email/verify-otp", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, code, projectId: this.projectId }),
+    });
+
+    if (!res.ok) {
+      const data = await res.json();
+      return { data: null, error: new Error(data.error) };
+    }
+
+    const { token } = await res.json();
+
+    // Store JWT same way as OAuth flow
+    await this.putInStorage<AuthJwtLocationObject>(AUTH_KEY, { jwt: token });
+
+    // Return user data same way as getUser()
+    return this.getUser();
+  }
+
   private async putInStorage<ObjectType extends object>(
     key: string,
     data: ObjectType,
