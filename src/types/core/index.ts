@@ -25,6 +25,16 @@ export type Web3ProjectBranding = {
   discordEnabled?: boolean;
   googleEnabled?: boolean;
   appleEnabled?: boolean;
+  emailEnabled?: boolean;
+};
+
+export type Web3ProjectWallet = {
+  id: string;
+  projectId: string;
+  key: string;
+  pubKeyHash: string;
+  stakeCredentialHash: string;
+  tags: string[];
 };
 
 export type Web3JWTBody = {
@@ -48,7 +58,7 @@ export type Web3JWTBody = {
   username: string | null;
 };
 
-export type Web3AuthProvider = "google" | "discord" | "twitter" | "apple";
+export type Web3AuthProvider = "google" | "discord" | "twitter" | "apple" | "email";
 
 export type SponsorshipTxParserPostRequestBody = {
   txHex: string;
