@@ -69,7 +69,7 @@ export const linkingAdapter: LinkingAdapter = {
       const height = 668;
       const features = buildWindowFeatures(width, height);
 
-      const popup = window.open(url, 'utxos_auth', features);
+      const popup = window.open(url, 'utxos', features);
 
       if (!popup) {
         reject(new Error('Popup blocked. Please allow popups for this site.'));
@@ -103,7 +103,7 @@ export const linkingAdapter: LinkingAdapter = {
         const { code, state, error, error_description, target } = event.data;
 
         // Check for utxos-specific target or OAuth params
-        if (target === 'utxos' || target === 'utxos_auth' || code || error) {
+        if (target === 'utxos' || code || error) {
           if (!popup.closed) {
             popup.close();
           }
