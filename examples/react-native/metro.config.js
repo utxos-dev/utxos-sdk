@@ -19,15 +19,25 @@ config.resolver.nodeModulesPaths = [
   path.resolve(monorepoRoot, 'node_modules'),
 ];
 
-// Handle the react-native conditional export
-config.resolver.resolverMainFields = ['react-native', 'browser', 'main'];
+// For web, prioritize browser field; for native, prioritize react-native
+config.resolver.resolverMainFields = ['browser', 'main', 'module'];
 
 // Ensure we can resolve the SDK package
 config.resolver.extraNodeModules = {
   '@utxos/sdk': sdkPath,
 };
 
+// Enable package exports resolution
+config.resolver.unstable_enablePackageExports = true;
+
+// For web builds, use 'browser' condition to get the browser bundle
+// For native builds, use 'react-native' condition
+config.resolver.unstable_conditionNames = ['browser', 'import', 'require', 'default'];
+
 // Don't resolve symlinks (important for linked packages)
 config.resolver.disableHierarchicalLookup = false;
+
+// Add source extensions that Metro should handle
+config.resolver.sourceExts = [...config.resolver.sourceExts, 'cjs', 'mjs'];
 
 module.exports = config;

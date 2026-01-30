@@ -1,5 +1,5 @@
-import { StatusBar } from 'expo-status-bar';
-import { useState, useCallback } from 'react';
+import { StatusBar } from "expo-status-bar";
+import { useState } from "react";
 import {
   StyleSheet,
   Text,
@@ -7,510 +7,435 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   SafeAreaView,
-  Alert,
+  Image,
   Platform,
-} from 'react-native';
+} from "react-native";
+import * as Clipboard from "expo-clipboard";
+import { Web3Wallet } from "@utxos/sdk";
+import type { EnableWeb3WalletOptions, Web3AuthProvider } from "@utxos/sdk";
 
-// Demo mode - set to false when SDK polyfills are fully working
-const DEMO_MODE = true;
-
-// UTXOS Configuration
-const UTXOS_CONFIG = {
-  networkId: 0, // 0: preprod, 1: mainnet
-  projectId: 'demo-project', // Replace with your project ID from https://utxos.dev/dashboard
+type UserData = {
+  avatarUrl: string | null;
+  email: string | null;
+  id: string;
+  username: string | null;
 };
 
 type WalletState = {
-  isConnecting: boolean;
-  isConnected: boolean;
-  address: string | null;
-  error: string | null;
+  user: UserData | undefined;
+  cardanoAddress: string;
+  bitcoinAddress: string;
+  sparkAddress: string;
+};
+
+const PROVIDERS: { id: Web3AuthProvider; label: string; icon: string }[] = [
+  { id: "google", label: "Google", icon: "G" },
+  { id: "discord", label: "Discord", icon: "D" },
+  { id: "twitter", label: "Twitter", icon: "X" },
+  { id: "apple", label: "Apple", icon: "" },
+  { id: "email", label: "Email", icon: "@" },
+];
+
+const UTXOS_CONFIG = {
+  networkId: Number(process.env.EXPO_PUBLIC_UTXOS_NETWORK_ID) || 0,
+  projectId: process.env.EXPO_PUBLIC_UTXOS_PROJECT_ID || "",
 };
 
 export default function App() {
-  const [wallet, setWallet] = useState<WalletState>({
-    isConnecting: false,
-    isConnected: false,
-    address: null,
-    error: null,
-  });
+  const [wallet, setWallet] = useState<WalletState | null>(null);
+  const [loading, setLoading] = useState<Web3AuthProvider | "any" | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  const connectWallet = useCallback(async (provider?: string) => {
-    setWallet(prev => ({ ...prev, isConnecting: true, error: null }));
+  const handleConnect = async (provider?: Web3AuthProvider) => {
+    setLoading(provider || "any");
+    setError(null);
 
     try {
-      if (DEMO_MODE) {
-        // Demo mode - simulate wallet connection
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        const demoAddress = 'addr_test1qz2fxv2umyhttkxyxp8x0dlpdt3k6cwng5pxj3jhsydzer3jcu5d8ps7zex2k2xt3uqxgjqnnj83ws8lhrn648jjxtwq2ytjqp';
+      const options: EnableWeb3WalletOptions = {
+        networkId: UTXOS_CONFIG.networkId as 0 | 1,
+        projectId: UTXOS_CONFIG.projectId,
+        directTo: provider,
+      };
 
-        setWallet({
-          isConnecting: false,
-          isConnected: true,
-          address: demoAddress,
-          error: null,
-        });
+      const web3Wallet = await Web3Wallet.enable(options);
 
-        if (Platform.OS !== 'web') {
-          Alert.alert('Demo Mode', `Connected via ${provider || 'wallet'}!\nAddress: ${demoAddress.substring(0, 20)}...`);
-        }
-        return;
-      }
+      const user = web3Wallet.getUser();
 
-      // Production mode - use actual SDK
-      const { Web3Wallet } = await import('@utxos/sdk');
-      const web3Wallet = await Web3Wallet.enable({
-        ...UTXOS_CONFIG,
-      });
-
-      const addresses = await web3Wallet.getUsedAddresses();
-      const address = addresses[0] || null;
+      const cardanoAddress =
+        (await web3Wallet.cardano.getChangeAddress()) || "";
+      const bitcoinAddresses = await web3Wallet.bitcoin.getAddresses();
+      const bitcoinAddress = bitcoinAddresses[0]?.address || "";
+      const sparkAddressInfo = web3Wallet.spark.getAddress();
+      const sparkAddress = sparkAddressInfo.address || "";
 
       setWallet({
-        isConnecting: false,
-        isConnected: true,
-        address,
-        error: null,
+        user,
+        cardanoAddress,
+        bitcoinAddress,
+        sparkAddress,
       });
-
-      if (Platform.OS !== 'web') {
-        Alert.alert('Success', `Connected to wallet!\nAddress: ${address?.substring(0, 20)}...`);
-      }
-    } catch (error) {
-      console.error('Wallet connection error:', error);
-      setWallet(prev => ({
-        ...prev,
-        isConnecting: false,
-        error: error instanceof Error ? error.message : 'Failed to connect wallet',
-      }));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Connection failed");
+    } finally {
+      setLoading(null);
     }
-  }, []);
+  };
 
-  const disconnectWallet = useCallback(() => {
-    setWallet({
-      isConnecting: false,
-      isConnected: false,
-      address: null,
-      error: null,
-    });
-  }, []);
+  const handleDisconnect = () => {
+    setWallet(null);
+  };
 
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar style="light" />
 
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.logoContainer}>
-          <Text style={styles.logoText}>UTXOS</Text>
-        </View>
-        <Text style={styles.title}>Web3 Wallet</Text>
-        <Text style={styles.subtitle}>Wallet as a Service</Text>
-      </View>
-
-      {/* Main Content */}
       <View style={styles.content}>
-        {!wallet.isConnected ? (
-          <>
-            {/* Welcome Card */}
-            <View style={styles.card}>
-              <Text style={styles.cardTitle}>Welcome</Text>
-              <Text style={styles.cardText}>
-                Connect your wallet using social login or other authentication methods.
-              </Text>
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={styles.title}>UTXOS Wallet</Text>
+          <Text style={styles.subtitle}>Web3 Wallet as a Service</Text>
+        </View>
+
+        {/* Error Message */}
+        {error && (
+          <View style={styles.errorContainer}>
+            <Text style={styles.errorText}>{error}</Text>
+          </View>
+        )}
+
+        {!wallet ? (
+          <View style={styles.loginSection}>
+            {/* Primary Connect Button */}
+            <TouchableOpacity
+              style={styles.primaryButton}
+              onPress={() => handleConnect()}
+              disabled={loading !== null}
+            >
+              {loading === "any" ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <Text style={styles.primaryButtonText}>Connect Wallet</Text>
+              )}
+            </TouchableOpacity>
+
+            {/* Divider */}
+            <View style={styles.divider}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>or continue with</Text>
+              <View style={styles.dividerLine} />
             </View>
 
-            {/* Network Badge */}
-            <View style={styles.networkBadge}>
-              <View style={styles.networkDot} />
-              <Text style={styles.networkText}>
-                {UTXOS_CONFIG.networkId === 0 ? 'Preprod Network' : 'Mainnet'}
-              </Text>
+            {/* Social Grid */}
+            <View style={styles.socialGrid}>
+              {PROVIDERS.map((p) => (
+                <TouchableOpacity
+                  key={p.id}
+                  style={styles.socialButton}
+                  onPress={() => handleConnect(p.id)}
+                  disabled={loading !== null}
+                >
+                  <Text style={styles.socialIcon}>{p.icon}</Text>
+                  <Text style={styles.socialButtonText}>{p.label}</Text>
+                  {loading === p.id && (
+                    <ActivityIndicator
+                      size="small"
+                      color="#fff"
+                      style={styles.spinner}
+                    />
+                  )}
+                </TouchableOpacity>
+              ))}
             </View>
-
-            {/* Social Login Buttons */}
-            <View style={styles.loginSection}>
-              <Text style={styles.sectionTitle}>Sign in with</Text>
-
-              <TouchableOpacity
-                style={[styles.socialButton, styles.googleButton]}
-                onPress={() => connectWallet('google')}
-                disabled={wallet.isConnecting}
-              >
-                <Text style={styles.socialIcon}>G</Text>
-                <Text style={styles.socialButtonText}>Continue with Google</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.socialButton, styles.appleButton]}
-                onPress={() => connectWallet('apple')}
-                disabled={wallet.isConnecting}
-              >
-                <Text style={styles.socialIcon}>🍎</Text>
-                <Text style={[styles.socialButtonText, styles.appleButtonText]}>
-                  Continue with Apple
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.socialButton, styles.discordButton]}
-                onPress={() => connectWallet('discord')}
-                disabled={wallet.isConnecting}
-              >
-                <Text style={styles.socialIcon}>💬</Text>
-                <Text style={[styles.socialButtonText, styles.discordButtonText]}>
-                  Continue with Discord
-                </Text>
-              </TouchableOpacity>
-
-              <View style={styles.divider}>
-                <View style={styles.dividerLine} />
-                <Text style={styles.dividerText}>or</Text>
-                <View style={styles.dividerLine} />
-              </View>
-
-              <TouchableOpacity
-                style={[styles.socialButton, styles.walletButton]}
-                onPress={() => connectWallet()}
-                disabled={wallet.isConnecting}
-              >
-                <Text style={styles.socialIcon}>🔗</Text>
-                <Text style={styles.socialButtonText}>Connect Wallet</Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Loading Indicator */}
-            {wallet.isConnecting && (
-              <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color="#3b82f6" />
-                <Text style={styles.loadingText}>Connecting...</Text>
-              </View>
-            )}
-
-            {/* Error Message */}
-            {wallet.error && (
-              <View style={styles.errorContainer}>
-                <Text style={styles.errorText}>{wallet.error}</Text>
-              </View>
-            )}
-          </>
+          </View>
         ) : (
-          <>
-            {/* Connected State */}
-            <View style={styles.connectedCard}>
-              <View style={styles.successIcon}>
-                <Text style={styles.successEmoji}>✅</Text>
+          <View style={styles.walletSection}>
+            {/* User Card */}
+            {wallet.user && (
+              <View style={styles.userCard}>
+                {wallet.user.avatarUrl && (
+                  <Image
+                    source={{ uri: wallet.user.avatarUrl }}
+                    style={styles.avatar}
+                  />
+                )}
+                <View style={styles.userInfo}>
+                  <Text style={styles.userName}>
+                    {wallet.user.username || wallet.user.email || "User"}
+                  </Text>
+                  <Text style={styles.userId}>
+                    ID: {wallet.user.id.slice(0, 8)}...
+                  </Text>
+                </View>
               </View>
-              <Text style={styles.connectedTitle}>Wallet Connected</Text>
-              <Text style={styles.connectedSubtitle}>Your wallet is ready to use</Text>
+            )}
 
-              <View style={styles.addressContainer}>
-                <Text style={styles.addressLabel}>Address</Text>
-                <Text style={styles.addressText} numberOfLines={1} ellipsizeMode="middle">
-                  {wallet.address || 'No address found'}
-                </Text>
-              </View>
-
-              <View style={styles.balanceContainer}>
-                <Text style={styles.balanceLabel}>Balance</Text>
-                <Text style={styles.balanceText}>Loading...</Text>
-              </View>
-            </View>
-
-            {/* Action Buttons */}
-            <View style={styles.actionButtons}>
-              <TouchableOpacity style={styles.actionButton}>
-                <Text style={styles.actionIcon}>📤</Text>
-                <Text style={styles.actionButtonText}>Send</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity style={styles.actionButton}>
-                <Text style={styles.actionIcon}>📥</Text>
-                <Text style={styles.actionButtonText}>Receive</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity style={styles.actionButton}>
-                <Text style={styles.actionIcon}>📜</Text>
-                <Text style={styles.actionButtonText}>History</Text>
-              </TouchableOpacity>
+            {/* Address Cards */}
+            <View style={styles.addressList}>
+              <AddressCard
+                chain="Cardano"
+                address={wallet.cardanoAddress}
+                color="#0033AD"
+              />
+              <AddressCard
+                chain="Bitcoin"
+                address={wallet.bitcoinAddress}
+                color="#F7931A"
+              />
+              <AddressCard
+                chain="Spark"
+                address={wallet.sparkAddress}
+                color="#8B5CF6"
+              />
             </View>
 
             {/* Disconnect Button */}
-            <TouchableOpacity style={styles.disconnectButton} onPress={disconnectWallet}>
-              <Text style={styles.disconnectButtonText}>Disconnect Wallet</Text>
+            <TouchableOpacity
+              style={styles.disconnectButton}
+              onPress={handleDisconnect}
+            >
+              <Text style={styles.disconnectButtonText}>Disconnect</Text>
             </TouchableOpacity>
-          </>
+          </View>
         )}
-      </View>
 
-      {/* Footer */}
-      <View style={styles.footer}>
-        <Text style={styles.footerText}>Powered by UTXOS • Wallet as a Service</Text>
+        {/* Footer */}
+        <Text style={styles.footer}>
+          Network: {UTXOS_CONFIG.networkId === 1 ? "Mainnet" : "Preprod"}
+        </Text>
       </View>
     </SafeAreaView>
+  );
+}
+
+function AddressCard({
+  chain,
+  address,
+  color,
+}: {
+  chain: string;
+  address: string;
+  color: string;
+}) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    if (address) {
+      await Clipboard.setStringAsync(address);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  const truncateAddress = (addr: string) => {
+    if (!addr) return "Not available";
+    return `${addr.slice(0, 20)}...${addr.slice(-8)}`;
+  };
+
+  return (
+    <View style={styles.addressCard}>
+      <View style={styles.addressHeader}>
+        <View style={[styles.chainBadge, { backgroundColor: color }]}>
+          <Text style={styles.chainBadgeText}>{chain}</Text>
+        </View>
+        <TouchableOpacity style={styles.copyButton} onPress={handleCopy}>
+          <Text style={styles.copyButtonText}>
+            {copied ? "Copied!" : "Copy"}
+          </Text>
+        </TouchableOpacity>
+      </View>
+      <Text style={styles.addressText}>{truncateAddress(address)}</Text>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0f172a',
-  },
-  header: {
-    alignItems: 'center',
-    paddingTop: 20,
-    paddingBottom: 20,
-  },
-  logoContainer: {
-    width: 60,
-    height: 60,
-    borderRadius: 16,
-    backgroundColor: '#3b82f6',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 12,
-  },
-  logoText: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#fff',
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#fff',
-  },
-  subtitle: {
-    fontSize: 14,
-    color: '#64748b',
-    marginTop: 4,
+    backgroundColor: "#0f0f1a",
   },
   content: {
     flex: 1,
     paddingHorizontal: 24,
+    paddingTop: 40,
   },
-  card: {
-    backgroundColor: '#1e293b',
-    borderRadius: 16,
-    padding: 20,
+  header: {
+    alignItems: "center",
+    marginBottom: 32,
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: "700",
+    color: "#fff",
+  },
+  subtitle: {
+    fontSize: 14,
+    color: "#6b7280",
+    marginTop: 8,
+  },
+  errorContainer: {
+    backgroundColor: "rgba(239,68,68,0.1)",
+    borderWidth: 1,
+    borderColor: "rgba(239,68,68,0.3)",
+    borderRadius: 12,
+    padding: 12,
     marginBottom: 16,
   },
-  cardTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#fff',
-    marginBottom: 8,
-  },
-  cardText: {
+  errorText: {
+    color: "#fca5a5",
     fontSize: 14,
-    color: '#94a3b8',
-    lineHeight: 20,
-  },
-  networkBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'center',
-    backgroundColor: '#1e293b',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    marginBottom: 24,
-  },
-  networkDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#22c55e',
-    marginRight: 8,
-  },
-  networkText: {
-    fontSize: 12,
-    color: '#94a3b8',
+    textAlign: "center",
   },
   loginSection: {
-    marginBottom: 20,
+    gap: 16,
   },
-  sectionTitle: {
-    fontSize: 14,
-    color: '#64748b',
-    marginBottom: 16,
-    textAlign: 'center',
-  },
-  socialButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+  primaryButton: {
+    width: "100%",
     paddingVertical: 14,
-    paddingHorizontal: 20,
     borderRadius: 12,
-    marginBottom: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#3b82f6",
   },
-  googleButton: {
-    backgroundColor: '#fff',
-  },
-  appleButton: {
-    backgroundColor: '#000',
-  },
-  discordButton: {
-    backgroundColor: '#5865F2',
-  },
-  walletButton: {
-    backgroundColor: '#3b82f6',
-  },
-  socialIcon: {
-    fontSize: 18,
-    marginRight: 12,
-  },
-  socialButtonText: {
+  primaryButtonText: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#1f2937',
-  },
-  appleButtonText: {
-    color: '#fff',
-  },
-  discordButtonText: {
-    color: '#fff',
+    fontWeight: "600",
+    color: "#fff",
   },
   divider: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    marginVertical: 8,
   },
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: '#334155',
+    backgroundColor: "rgba(255,255,255,0.1)",
   },
   dividerText: {
-    color: '#64748b',
+    color: "#6b7280",
     paddingHorizontal: 16,
     fontSize: 12,
   },
-  loadingContainer: {
-    alignItems: 'center',
-    marginTop: 20,
+  socialGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 12,
   },
-  loadingText: {
-    color: '#94a3b8',
-    marginTop: 12,
+  socialButton: {
+    width: "47%",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    backgroundColor: "rgba(255,255,255,0.05)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.1)",
+    borderRadius: 10,
+  },
+  socialIcon: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#e5e7eb",
+  },
+  socialButtonText: {
     fontSize: 14,
+    fontWeight: "500",
+    color: "#e5e7eb",
   },
-  errorContainer: {
-    backgroundColor: '#450a0a',
-    borderRadius: 12,
+  spinner: {
+    marginLeft: 8,
+  },
+  walletSection: {
+    gap: 20,
+  },
+  userCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 16,
     padding: 16,
-    marginTop: 16,
-  },
-  errorText: {
-    color: '#fca5a5',
-    fontSize: 14,
-    textAlign: 'center',
-  },
-  connectedCard: {
-    backgroundColor: '#1e293b',
-    borderRadius: 16,
-    padding: 24,
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  successIcon: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: '#14532d',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 16,
-  },
-  successEmoji: {
-    fontSize: 32,
-  },
-  connectedTitle: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 4,
-  },
-  connectedSubtitle: {
-    fontSize: 14,
-    color: '#94a3b8',
-    marginBottom: 20,
-  },
-  addressContainer: {
-    width: '100%',
-    backgroundColor: '#0f172a',
+    backgroundColor: "rgba(255,255,255,0.05)",
     borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
   },
-  addressLabel: {
+  avatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+  },
+  userInfo: {
+    flex: 1,
+  },
+  userName: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#fff",
+  },
+  userId: {
     fontSize: 12,
-    color: '#64748b',
-    marginBottom: 4,
+    color: "#6b7280",
+    marginTop: 4,
   },
-  addressText: {
-    fontSize: 14,
-    color: '#fff',
-    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+  addressList: {
+    gap: 12,
   },
-  balanceContainer: {
-    width: '100%',
-    backgroundColor: '#0f172a',
-    borderRadius: 12,
+  addressCard: {
     padding: 16,
-  },
-  balanceLabel: {
-    fontSize: 12,
-    color: '#64748b',
-    marginBottom: 4,
-  },
-  balanceText: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#fff',
-  },
-  actionButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginBottom: 24,
-  },
-  actionButton: {
-    alignItems: 'center',
-    backgroundColor: '#1e293b',
-    paddingVertical: 16,
-    paddingHorizontal: 24,
+    backgroundColor: "rgba(0,0,0,0.2)",
     borderRadius: 12,
-    minWidth: 90,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.05)",
   },
-  actionIcon: {
-    fontSize: 24,
+  addressHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 8,
   },
-  actionButtonText: {
-    fontSize: 14,
-    color: '#fff',
-    fontWeight: '500',
+  chainBadge: {
+    paddingVertical: 4,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+  },
+  chainBadgeText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#fff",
+  },
+  copyButton: {
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.1)",
+    borderRadius: 6,
+  },
+  copyButtonText: {
+    fontSize: 12,
+    color: "#9ca3af",
+  },
+  addressText: {
+    fontSize: 13,
+    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
+    color: "#9ca3af",
   },
   disconnectButton: {
-    backgroundColor: 'transparent',
+    width: "100%",
+    paddingVertical: 12,
     borderWidth: 1,
-    borderColor: '#ef4444',
-    paddingVertical: 14,
-    borderRadius: 12,
-    alignItems: 'center',
+    borderColor: "rgba(248,113,113,0.3)",
+    borderRadius: 10,
+    alignItems: "center",
   },
   disconnectButtonText: {
-    color: '#ef4444',
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 14,
+    fontWeight: "500",
+    color: "#f87171",
   },
   footer: {
-    paddingVertical: 16,
-    alignItems: 'center',
-  },
-  footerText: {
+    textAlign: "center",
     fontSize: 12,
-    color: '#475569',
+    color: "#4b5563",
+    marginTop: "auto",
+    paddingBottom: 20,
   },
 });
