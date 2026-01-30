@@ -1,4 +1,6 @@
 import { crypto } from ".";
+import { getEncoding } from "../../internal/platform-context";
+
 const IV_LENGTH = 16;
 
 export async function encryptWithCipher({
@@ -23,9 +25,10 @@ export async function encryptWithCipher({
   );
 
   // Return the encrypted data as a base64 string
+  const encoding = getEncoding();
   return JSON.stringify({
-    iv: Buffer.from(iv).toString("base64"),
-    ciphertext: Buffer.from(encrypted).toString("base64"),
+    iv: encoding.bytesToBase64(new Uint8Array(iv)),
+    ciphertext: encoding.bytesToBase64(new Uint8Array(encrypted)),
   });
 }
 export async function decryptWithCipher({
@@ -43,8 +46,9 @@ export async function decryptWithCipher({
   } = JSON.parse(encryptedDataJSON);
 
   // Decode the IV and encrypted data from base64
-  const decodedIv = Buffer.from(_encryptedData.iv, "base64");
-  const decodedEncryptedData = Buffer.from(_encryptedData.ciphertext, "base64");
+  const encoding = getEncoding();
+  const decodedIv = encoding.base64ToBytes(_encryptedData.iv);
+  const decodedEncryptedData = encoding.base64ToBytes(_encryptedData.ciphertext);
 
   // Decrypt the data
   const decrypted = await crypto.subtle.decrypt(
@@ -70,9 +74,10 @@ export async function generateKeyPair() {
   const publicKey = await crypto.subtle.exportKey("spki", keyPair.publicKey);
   const privateKey = await crypto.subtle.exportKey("pkcs8", keyPair.privateKey);
 
+  const encoding = getEncoding();
   const key = {
-    publicKey: Buffer.from(publicKey).toString("base64"),
-    privateKey: Buffer.from(privateKey).toString("base64"),
+    publicKey: encoding.bytesToBase64(new Uint8Array(publicKey)),
+    privateKey: encoding.bytesToBase64(new Uint8Array(privateKey)),
   };
 
   return key;
@@ -85,7 +90,8 @@ export async function encryptWithPublicKey({
   publicKey: string;
   data: string;
 }) {
-  const publicKeyBuffer = Buffer.from(publicKey, "base64");
+  const encoding = getEncoding();
+  const publicKeyBuffer = encoding.base64ToBytes(publicKey);
 
   const _publicKey = await crypto.subtle.importKey(
     "spki",
@@ -129,11 +135,9 @@ export async function encryptWithPublicKey({
   };
 
   return JSON.stringify({
-    ephemeralPublicKey: Buffer.from(encryptedData.ephemeralPublicKey).toString(
-      "base64",
-    ),
-    iv: Buffer.from(encryptedData.iv).toString("base64"),
-    ciphertext: Buffer.from(encryptedData.ciphertext).toString("base64"),
+    ephemeralPublicKey: encoding.bytesToBase64(new Uint8Array(encryptedData.ephemeralPublicKey)),
+    iv: encoding.bytesToBase64(new Uint8Array(encryptedData.iv)),
+    ciphertext: encoding.bytesToBase64(new Uint8Array(encryptedData.ciphertext)),
   });
 }
 
@@ -144,7 +148,8 @@ export async function decryptWithPrivateKey({
   privateKey: string;
   encryptedDataJSON: string;
 }) {
-  const privateKeyBuffer = Buffer.from(privateKey, "base64");
+  const encoding = getEncoding();
+  const privateKeyBuffer = encoding.base64ToBytes(privateKey);
 
   const _encryptedData: {
     ephemeralPublicKey: string;
@@ -153,12 +158,9 @@ export async function decryptWithPrivateKey({
   } = JSON.parse(encryptedDataJSON);
 
   const encryptedData = {
-    ephemeralPublicKey: Buffer.from(
-      _encryptedData.ephemeralPublicKey,
-      "base64",
-    ),
-    iv: Buffer.from(_encryptedData.iv, "base64"),
-    ciphertext: Buffer.from(_encryptedData.ciphertext, "base64"),
+    ephemeralPublicKey: encoding.base64ToBytes(_encryptedData.ephemeralPublicKey),
+    iv: encoding.base64ToBytes(_encryptedData.iv),
+    ciphertext: encoding.base64ToBytes(_encryptedData.ciphertext),
   };
 
   const _privateKey = await crypto.subtle.importKey(

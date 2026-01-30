@@ -5,6 +5,7 @@ import {
   Web3WalletObject,
   Web3AuthProvider,
 } from "../";
+import { getStorage, getLinking } from "../internal/platform-context";
 export * from "./utils";
 
 const AUTH_KEY = "mesh-web3-services-auth";
@@ -549,19 +550,20 @@ export class Web3NonCustodialProvider {
   }
 
   /** Always place under /auth/mesh */
-  handleAuthenticationRoute(): { error: AuthRouteError } | void {
-    console.log("Logging params:", window.location.search);
-    const params = new URLSearchParams(window.location.search);
-    const token = params.get("token");
-    const redirect = params.get("redirect");
+  async handleAuthenticationRoute(): Promise<{ error: AuthRouteError } | void> {
+    const linking = getLinking();
+    const urlParams = linking.getURLParams();
+    console.log("Logging params:", urlParams);
+    const token = urlParams["token"] ?? null;
+    const redirect = urlParams["redirect"] ?? null;
     console.log(
       "Logging from inside handleAuthenticationRoute:",
       token,
       redirect,
     );
     if (token && redirect) {
-      this.putInStorage<AuthJwtLocationObject>(AUTH_KEY, { jwt: token });
-      window.location.href = redirect;
+      await this.putInStorage<AuthJwtLocationObject>(AUTH_KEY, { jwt: token });
+      await linking.openURL(redirect);
       return;
     }
     return {
@@ -636,7 +638,7 @@ export class Web3NonCustodialProvider {
       await chrome.storage.sync.set({ [key]: data });
     } else if (this.storageLocation === "local_storage") {
       // @todo - If this throws try/catch
-      localStorage.setItem(key, JSON.stringify(data));
+      await getStorage().setItem(key, JSON.stringify(data));
     }
   }
   private async pushDevice(deviceWallet: {
@@ -710,7 +712,7 @@ export class Web3NonCustodialProvider {
       }
     } else if (this.storageLocation === "local_storage") {
       // @todo - If this throws try/catch
-      const data = localStorage.getItem(key);
+      const data = await getStorage().getItem(key);
       if (data) {
         return {
           data: JSON.parse(data) as ObjectType,
@@ -720,7 +722,7 @@ export class Web3NonCustodialProvider {
         return {
           data: null,
           error: new StorageRetrievalError(
-            `Unable to retrieve key ${key} from localStorage.`,
+            `Unable to retrieve key ${key} from storage.`,
           ),
         };
       }
