@@ -1,17 +1,18 @@
-import { Crypto as WebCrypto } from "@peculiar/webcrypto";
-let crypto: Crypto;
-// Browser environment
-if (typeof window !== "undefined" && window.crypto && window.crypto.subtle) {
-  crypto = window.crypto;
-}
-// Node.js environment
-else if (typeof global !== "undefined") {
-  const webCrypto = new WebCrypto();
-  crypto = webCrypto as unknown as Crypto;
-} else {
-  throw new Error("Web Crypto API is not supported in this environment.");
-}
-export { crypto };
+import { getCrypto } from '../../internal/platform-context';
+
+// Re-export adapter accessor
+export { getCrypto };
+
+// Create a crypto-like interface that uses the adapter
+// This maintains backward compatibility with code using crypto.subtle
+export const crypto = {
+  getRandomValues<T extends ArrayBufferView>(array: T): T {
+    return getCrypto().getRandomValuesInPlace(array);
+  },
+  get subtle(): SubtleCrypto {
+    return getCrypto().getSubtleCrypto();
+  }
+};
 
 export * from "./encryption";
 export * from "./hash";

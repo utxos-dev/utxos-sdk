@@ -1,11 +1,11 @@
 // CRITICAL: Initialize adapters BEFORE any other imports
 // This ensures adapters are set before any module tries to use them
 import { setAdapters } from './internal/platform-context';
-import { browserAdapters } from './platforms/browser';
+import { reactNativeAdapters } from './platforms/react-native';
 
-setAdapters(browserAdapters);
+setAdapters(reactNativeAdapters);
 
-// Re-export everything - NO BREAKING CHANGES
+// Re-export everything - SAME API AS BROWSER
 export * from "./chains";
 export * from "./functions";
 export * from "./non-custodial";
