@@ -60,6 +60,14 @@ export const linkingAdapter: LinkingAdapter = {
   },
 
   /**
+   * Redirect current page to URL (same-tab navigation)
+   * Used for auth flow redirects after token storage
+   */
+  async redirectURL(url: string): Promise<void> {
+    window.location.href = url;
+  },
+
+  /**
    * Open OAuth popup window and wait for callback via postMessage
    * Handles popup blocked, user close, and message events
    */

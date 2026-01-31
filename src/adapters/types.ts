@@ -114,6 +114,15 @@ export interface LinkingAdapter {
   openURL(url: string): Promise<void>;
 
   /**
+   * Redirect current page/context to URL (same-tab navigation)
+   * Browser: replaces current page via window.location.href
+   * React Native: no-op (use deep linking instead)
+   * Used for auth flow redirects after token storage
+   * @param url - URL to redirect to
+   */
+  redirectURL(url: string): Promise<void>;
+
+  /**
    * Open OAuth/auth window and wait for callback
    * Handles popup window lifecycle and callback URL parsing
    * @param url - Authorization URL to open

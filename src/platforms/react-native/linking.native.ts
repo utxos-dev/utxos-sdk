@@ -30,6 +30,14 @@ export const linkingAdapter: LinkingAdapter = {
     }
   },
 
+  /**
+   * Redirect to URL - in React Native, this is equivalent to openURL
+   * since there's no browser-style same-tab navigation
+   */
+  async redirectURL(url: string): Promise<void> {
+    await this.openURL(url);
+  },
+
   async openAuthWindow(url: string, callbackScheme: string): Promise<AuthCallbackResult> {
     // If InAppBrowser is available, use it for better UX
     if (InAppBrowser && (await InAppBrowser.isAvailable())) {

@@ -566,7 +566,7 @@ export class Web3NonCustodialProvider {
     );
     if (token && redirect) {
       await this.putInStorage<AuthJwtLocationObject>(AUTH_KEY, { jwt: token });
-      await linking.openURL(redirect);
+      await linking.redirectURL(redirect);
       return;
     }
     return {
