@@ -50,11 +50,11 @@ export async function decryptWithCipher({
   const decodedIv = encoding.base64ToBytes(_encryptedData.iv);
   const decodedEncryptedData = encoding.base64ToBytes(_encryptedData.ciphertext);
 
-  // Decrypt the data
+  // Decrypt the data (slice creates fresh Uint8Array for type compatibility)
   const decrypted = await crypto.subtle.decrypt(
-    { name: algorithm, iv: decodedIv },
+    { name: algorithm, iv: decodedIv.slice() },
     key,
-    decodedEncryptedData,
+    decodedEncryptedData.slice(),
   );
 
   // Return the decrypted data as a string
@@ -95,7 +95,7 @@ export async function encryptWithPublicKey({
 
   const _publicKey = await crypto.subtle.importKey(
     "spki",
-    publicKeyBuffer,
+    publicKeyBuffer.slice(),
     { name: "ECDH", namedCurve: "P-256" },
     false,
     [],
@@ -165,7 +165,7 @@ export async function decryptWithPrivateKey({
 
   const _privateKey = await crypto.subtle.importKey(
     "pkcs8",
-    privateKeyBuffer,
+    privateKeyBuffer.slice(),
     { name: "ECDH", namedCurve: "P-256" },
     false,
     ["deriveKey"],
@@ -173,7 +173,7 @@ export async function decryptWithPrivateKey({
 
   const ephemeralPublicKey = await crypto.subtle.importKey(
     "spki",
-    encryptedData.ephemeralPublicKey,
+    encryptedData.ephemeralPublicKey.slice(),
     { name: "ECDH", namedCurve: "P-256" },
     false,
     [],
@@ -188,11 +188,11 @@ export async function decryptWithPrivateKey({
     ["decrypt"],
   );
 
-  // Decrypt the message
+  // Decrypt the message (slice creates fresh Uint8Array for type compatibility)
   const decrypted = await crypto.subtle.decrypt(
-    { name: "AES-GCM", iv: encryptedData.iv },
+    { name: "AES-GCM", iv: encryptedData.iv.slice() },
     sharedSecret,
-    encryptedData.ciphertext,
+    encryptedData.ciphertext.slice(),
   );
 
   return new TextDecoder().decode(decrypted);
