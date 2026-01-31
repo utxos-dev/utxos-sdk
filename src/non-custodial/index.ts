@@ -545,6 +545,9 @@ export class Web3NonCustodialProvider {
         appleSearchParams.toString();
       callback(appleAuthorizeUrl);
       return;
+    } else if (provider === "email") {
+      // Email uses OTP flow, not OAuth - this method should not be called for email
+      throw new Error("Email provider uses OTP flow. Use the email OTP API endpoints instead.");
     }
   }
 
