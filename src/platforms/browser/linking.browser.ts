@@ -191,4 +191,9 @@ export const linkingAdapter: LinkingAdapter = {
       window.removeEventListener('hashchange', handler);
     };
   },
+
+  getUserAgent(): string | null {
+    if (typeof navigator === 'undefined') return null;
+    return navigator.userAgent;
+  },
 };

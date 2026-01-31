@@ -210,4 +210,13 @@ export const cryptoAdapter: CryptoAdapter = {
       usages as KeyUsage[]
     );
   },
+
+  getSubtleCrypto(): SubtleCrypto {
+    return crypto.subtle;
+  },
+
+  getRandomValuesInPlace<T extends ArrayBufferView>(array: T): T {
+    crypto.getRandomValues(array);
+    return array;
+  },
 };

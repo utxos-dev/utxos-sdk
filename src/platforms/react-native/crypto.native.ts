@@ -27,6 +27,18 @@ function getCrypto(): Crypto {
   );
 }
 
+/**
+ * Map algorithm names to WebCrypto HMAC algorithm identifiers
+ */
+function getHmacAlgorithm(algorithm: string): HmacImportParams {
+  // Normalize algorithm name (handle both "SHA256" and "SHA-256" formats)
+  const normalized = algorithm.toUpperCase().replace(/SHA-?(\d+)/i, 'SHA-$1');
+  return {
+    name: 'HMAC',
+    hash: { name: normalized },
+  };
+}
+
 export const cryptoAdapter: CryptoAdapter = {
   getRandomBytes(size: number): Uint8Array {
     const bytes = new Uint8Array(size);
@@ -36,10 +48,11 @@ export const cryptoAdapter: CryptoAdapter = {
 
   async hmacSign(algorithm: string, key: Uint8Array, data: Uint8Array): Promise<Uint8Array> {
     const crypto = getCrypto();
+    const hmacAlgorithm = getHmacAlgorithm(algorithm);
     const cryptoKey = await crypto.subtle.importKey(
       'raw',
       key,
-      { name: 'HMAC', hash: algorithm },
+      hmacAlgorithm,
       false,
       ['sign']
     );
@@ -105,5 +118,14 @@ export const cryptoAdapter: CryptoAdapter = {
   async importKey(keyData: Uint8Array, algorithm: string, usages: string[]): Promise<CryptoKey> {
     const crypto = getCrypto();
     return crypto.subtle.importKey('raw', keyData, algorithm, false, usages as KeyUsage[]);
+  },
+
+  getSubtleCrypto(): SubtleCrypto {
+    return getCrypto().subtle;
+  },
+
+  getRandomValuesInPlace<T extends ArrayBufferView>(array: T): T {
+    getCrypto().getRandomValues(array);
+    return array;
   },
 };

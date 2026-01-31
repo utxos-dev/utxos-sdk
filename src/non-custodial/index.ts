@@ -5,7 +5,7 @@ import {
   Web3WalletObject,
   Web3AuthProvider,
 } from "../";
-import { getStorage, getLinking } from "../internal/platform-context";
+import { getStorage, getLinking, getEncoding } from "../internal/platform-context";
 export * from "./utils";
 
 const AUTH_KEY = "mesh-web3-services-auth";
@@ -192,6 +192,17 @@ export class Web3NonCustodialProvider {
     this.appleOauth2ClientId = params.appleOauth2ClientId;
   }
 
+  private base64Encode(str: string): string {
+    const encoding = getEncoding();
+    return encoding.bytesToBase64(encoding.utf8ToBytes(str));
+  }
+
+  private base64Decode(base64: string): string {
+    const encoding = getEncoding();
+    const normalized = base64.replace(/-/g, '+').replace(/_/g, '/');
+    return encoding.bytesToUtf8(encoding.base64ToBytes(normalized));
+  }
+
   async checkNonCustodialWalletsOnServer(): Promise<
     | { data: Web3WalletObject[]; error: null }
     | {
@@ -293,7 +304,7 @@ export class Web3NonCustodialProvider {
       }
     | { error: null; data: { deviceId: string; walletId: string } }
   > {
-    const userAgent = navigator.userAgent;
+    const userAgent = getLinking().getUserAgent() ?? 'unknown';
     const { data: user, error: userError } = await this.getUser();
     if (userError) {
       return { error: userError, data: null };
@@ -375,9 +386,7 @@ export class Web3NonCustodialProvider {
     if (bodyUnparsed === undefined) {
       return { data: null, error: new NotAuthenticatedError() };
     }
-    const body = JSON.parse(
-      atob(bodyUnparsed.replace(/-/g, "+").replace(/_/g, "/")),
-    ) as Web3JWTBody;
+    const body = JSON.parse(this.base64Decode(bodyUnparsed)) as Web3JWTBody;
 
     if (body.exp < Date.now()) {
       return { data: null, error: new SessionExpiredError() };
@@ -430,7 +439,7 @@ export class Web3NonCustodialProvider {
       newDeviceShardEncryptionKey,
     );
 
-    const userAgent = navigator.userAgent;
+    const userAgent = getLinking().getUserAgent() ?? 'unknown';
 
     const createDeviceBody: CreateDeviceBody = {
       walletId,
@@ -482,7 +491,7 @@ export class Web3NonCustodialProvider {
         redirect_uri: this.appOrigin + "/api/auth",
         scope:
           "https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile",
-        state: btoa(googleState),
+        state: this.base64Encode(googleState),
       });
       const googleAuthorizeUrl =
         "https://accounts.google.com/o/oauth2/v2/auth?" +
@@ -500,7 +509,7 @@ export class Web3NonCustodialProvider {
         response_type: "code",
         redirect_uri: this.appOrigin + "/api/auth",
         scope: "identify email",
-        state: btoa(discordState),
+        state: this.base64Encode(discordState),
       });
       const discordAuthorizeUrl =
         "https://discord.com/oauth2/authorize?" +
@@ -519,7 +528,7 @@ export class Web3NonCustodialProvider {
         client_id: this.twitterOauth2ClientId,
         redirect_uri: this.appOrigin + "/api/auth",
         scope: "users.read+tweet.read+offline.access+users.email",
-        state: btoa(twitterState),
+        state: this.base64Encode(twitterState),
         code_challenge: "challenge",
         code_challenge_method: "plain",
       });
@@ -539,7 +548,7 @@ export class Web3NonCustodialProvider {
         redirect_uri: this.appOrigin + "/api/auth",
         response_mode: "form_post",
         scope: "name email",
-        state: btoa(appleState),
+        state: this.base64Encode(appleState),
       });
       const appleAuthorizeUrl =
         "https://appleid.apple.com/auth/authorize?" +

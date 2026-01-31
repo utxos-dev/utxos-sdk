@@ -65,6 +65,19 @@ export interface CryptoAdapter {
    * @returns Promise resolving to CryptoKey object
    */
   importKey(keyData: Uint8Array, algorithm: string, usages: string[]): Promise<CryptoKey>;
+
+  /**
+   * Get native SubtleCrypto interface for advanced operations
+   * @returns SubtleCrypto interface
+   */
+  getSubtleCrypto(): SubtleCrypto;
+
+  /**
+   * Fill array with random values in place
+   * @param array - TypedArray to fill
+   * @returns The same array filled with random values
+   */
+  getRandomValuesInPlace<T extends ArrayBufferView>(array: T): T;
 }
 
 /**
@@ -150,6 +163,14 @@ export interface LinkingAdapter {
    * @returns Cleanup function to remove listener
    */
   addURLListener?(callback: (url: string) => void): () => void;
+
+  /**
+   * Get user agent string for device identification
+   * Browser: navigator.userAgent
+   * React Native: Device identifier
+   * @returns User agent string or null if not available
+   */
+  getUserAgent(): string | null;
 }
 
 /**

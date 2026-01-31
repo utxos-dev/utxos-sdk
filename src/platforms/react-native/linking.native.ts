@@ -116,4 +116,8 @@ export const linkingAdapter: LinkingAdapter = {
 
     return () => subscription.remove();
   },
+
+  getUserAgent(): string | null {
+    return 'ReactNative';
+  },
 };

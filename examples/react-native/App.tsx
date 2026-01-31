@@ -55,6 +55,8 @@ export default function App() {
         networkId: UTXOS_CONFIG.networkId as 0 | 1,
         projectId: UTXOS_CONFIG.projectId,
         directTo: provider,
+
+        appUrl: 'http://localhost:3000',
       };
 
       const web3Wallet = await Web3Wallet.enable(options);
