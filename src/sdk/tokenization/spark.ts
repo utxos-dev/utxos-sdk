@@ -435,7 +435,7 @@ export class TokenizationSpark {
     }
 
     return {
-      impactedOutputIds: result.impactedOutputIds,
+      impactedOutputIds: (result as any).impactedOutputIds ?? result.impactedTokenOutputs?.map((o: any) => o.id) ?? [],
       impactedTokenAmount: result.impactedTokenAmount.toString(),
     };
   }
@@ -493,7 +493,7 @@ export class TokenizationSpark {
     }
 
     return {
-      impactedOutputIds: result.impactedOutputIds,
+      impactedOutputIds: (result as any).impactedOutputIds ?? result.impactedTokenOutputs?.map((o: any) => o.id) ?? [],
       impactedTokenAmount: result.impactedTokenAmount.toString(),
     };
   }
