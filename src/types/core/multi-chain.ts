@@ -1,4 +1,4 @@
-import { MeshWallet } from "@meshsdk/wallet";
+import { MeshCardanoHeadlessWallet } from "@meshsdk/wallet";
 import { IssuerSparkWallet } from "@buildonspark/issuer-sdk";
 import {
   MultiChainWalletInfo as ContractWalletInfo,
@@ -33,7 +33,7 @@ export { validateMultiChainWalletInfo, isValidMultiChainWalletInfo };
  */
 export interface MultiChainWalletInstance {
   info: MultiChainWalletInfo;
-  cardanoWallet?: MeshWallet;
+  cardanoWallet?: MeshCardanoHeadlessWallet;
   sparkIssuerWallet?: IssuerSparkWallet;
 }
 

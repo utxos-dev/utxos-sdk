@@ -46,8 +46,8 @@ async function main() {
 
   // Get Cardano wallet
   const { cardanoWallet: cardano } = await sdk.wallet.getWallet(info.id, "cardano");
-  const addresses = cardano!.getAddresses();
-  console.log("Cardano base address:", addresses.baseAddressBech32);
+  const cardanoAddress = await cardano!.getChangeAddressBech32();
+  console.log("Cardano base address:", cardanoAddress);
 
   // Get Spark wallet info
   const sparkWalletInfo = await sdk.wallet.sparkIssuer.getWallet(info.id);

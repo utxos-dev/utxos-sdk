@@ -3,11 +3,14 @@ import { encryptWithCipher } from "../crypto";
 import { spiltKeyIntoShards } from "../key-shard";
 
 // Mock external wallet SDKs
+const mockCardanoWalletInstance = {
+  getUsedAddressesBech32: jest.fn().mockResolvedValue(["addr_test1..."]),
+};
+
 jest.mock("@meshsdk/wallet", () => ({
-  MeshWallet: jest.fn().mockImplementation(() => ({
-    init: jest.fn().mockResolvedValue(undefined),
-    getUsedAddresses: jest.fn().mockResolvedValue(["addr_test1..."]),
-  })),
+  MeshCardanoHeadlessWallet: {
+    fromMnemonic: jest.fn().mockResolvedValue(mockCardanoWalletInstance),
+  },
 }));
 
 jest.mock("@meshsdk/bitcoin", () => ({
@@ -28,7 +31,7 @@ jest.mock("@buildonspark/spark-sdk", () => ({
 
 // Import after mocks
 import { clientDeriveWallet } from "./derive-wallet";
-import { MeshWallet } from "@meshsdk/wallet";
+import { MeshCardanoHeadlessWallet } from "@meshsdk/wallet";
 import { EmbeddedWallet } from "@meshsdk/bitcoin";
 import { SparkWallet } from "@buildonspark/spark-sdk";
 
@@ -122,7 +125,7 @@ describe("clientDeriveWallet", () => {
     expect(EmbeddedWallet).toHaveBeenCalledWith(
       expect.objectContaining({ network: "Testnet" }),
     );
-    expect(MeshWallet).toHaveBeenCalledWith(
+    expect(MeshCardanoHeadlessWallet.fromMnemonic).toHaveBeenCalledWith(
       expect.objectContaining({ networkId: 0 }),
     );
     expect(SparkWallet.initialize).toHaveBeenCalledWith(
@@ -146,7 +149,7 @@ describe("clientDeriveWallet", () => {
     expect(EmbeddedWallet).toHaveBeenCalledWith(
       expect.objectContaining({ network: "Mainnet" }),
     );
-    expect(MeshWallet).toHaveBeenCalledWith(
+    expect(MeshCardanoHeadlessWallet.fromMnemonic).toHaveBeenCalledWith(
       expect.objectContaining({ networkId: 1 }),
     );
     expect(SparkWallet.initialize).toHaveBeenCalledWith(
@@ -241,24 +244,6 @@ describe("clientDeriveWallet", () => {
     expect(result.key).toBe(testMnemonic);
   });
 
-  it("initializes cardano wallet", async () => {
-    const shards = await spiltKeyIntoShards(testMnemonic);
-    const deviceKey = await deriveKeyFromPassword("device-password");
-
-    const encryptedDeviceShard = await encryptWithCipher({
-      data: shards[0]!,
-      key: deviceKey,
-    });
-
-    const result = await clientDeriveWallet(
-      encryptedDeviceShard,
-      deviceKey,
-      shards[1]!,
-      0,
-    );
-
-    expect(result.cardanoWallet.init).toHaveBeenCalled();
-  });
 });
 
 describe("clientDeriveWallet with 24-word mnemonic", () => {

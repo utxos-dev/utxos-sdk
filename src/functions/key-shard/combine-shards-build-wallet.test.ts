@@ -3,11 +3,14 @@ import { hexToBytes, bytesToString } from "../convertors";
 import { shamirCombine } from "./shamir-secret-sharing";
 
 // Mock external wallet SDKs
+const mockCardanoWalletInstance = {
+  getUsedAddressesBech32: jest.fn().mockResolvedValue(["addr_test1..."]),
+};
+
 jest.mock("@meshsdk/wallet", () => ({
-  MeshWallet: jest.fn().mockImplementation(() => ({
-    init: jest.fn().mockResolvedValue(undefined),
-    getUsedAddresses: jest.fn().mockResolvedValue(["addr_test1..."]),
-  })),
+  MeshCardanoHeadlessWallet: {
+    fromMnemonic: jest.fn().mockResolvedValue(mockCardanoWalletInstance),
+  },
 }));
 
 jest.mock("@meshsdk/bitcoin", () => ({
@@ -28,7 +31,7 @@ jest.mock("@buildonspark/spark-sdk", () => ({
 
 // Import after mocks are set up
 import { combineShardsBuildWallet } from "./combine-shards-build-wallet";
-import { MeshWallet } from "@meshsdk/wallet";
+import { MeshCardanoHeadlessWallet } from "@meshsdk/wallet";
 import { EmbeddedWallet } from "@meshsdk/bitcoin";
 import { SparkWallet } from "@buildonspark/spark-sdk";
 
@@ -101,38 +104,32 @@ describe("combineShardsBuildWallet", () => {
     );
   });
 
-  it("initializes MeshWallet with correct networkId for testnet", async () => {
+  it("initializes MeshCardanoHeadlessWallet with correct networkId for testnet", async () => {
     const mnemonic =
       "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
     const shards = await spiltKeyIntoShards(mnemonic);
 
     await combineShardsBuildWallet(0, shards[0]!, shards[1]!);
 
-    expect(MeshWallet).toHaveBeenCalledWith(
+    expect(MeshCardanoHeadlessWallet.fromMnemonic).toHaveBeenCalledWith(
       expect.objectContaining({
         networkId: 0,
-        key: expect.objectContaining({
-          type: "mnemonic",
-          words: mnemonic.split(" "),
-        }),
+        mnemonic: mnemonic.split(" "),
       }),
     );
   });
 
-  it("initializes MeshWallet with correct networkId for mainnet", async () => {
+  it("initializes MeshCardanoHeadlessWallet with correct networkId for mainnet", async () => {
     const mnemonic =
       "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
     const shards = await spiltKeyIntoShards(mnemonic);
 
     await combineShardsBuildWallet(1, shards[0]!, shards[1]!);
 
-    expect(MeshWallet).toHaveBeenCalledWith(
+    expect(MeshCardanoHeadlessWallet.fromMnemonic).toHaveBeenCalledWith(
       expect.objectContaining({
         networkId: 1,
-        key: expect.objectContaining({
-          type: "mnemonic",
-          words: mnemonic.split(" "),
-        }),
+        mnemonic: mnemonic.split(" "),
       }),
     );
   });
@@ -169,16 +166,6 @@ describe("combineShardsBuildWallet", () => {
         }),
       }),
     );
-  });
-
-  it("calls cardanoWallet.init()", async () => {
-    const mnemonic =
-      "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
-    const shards = await spiltKeyIntoShards(mnemonic);
-
-    const result = await combineShardsBuildWallet(0, shards[0]!, shards[1]!);
-
-    expect(result.cardanoWallet.init).toHaveBeenCalled();
   });
 
   it("passes bitcoinProvider to EmbeddedWallet when provided", async () => {

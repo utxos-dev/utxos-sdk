@@ -6,7 +6,8 @@ import {
 } from "../../types/core/multi-chain";
 import { CardanoWalletDeveloperControlled } from "./cardano";
 import { SparkIssuerWalletDeveloperControlled } from "./spark-issuer";
-import { MeshWallet } from "@meshsdk/wallet";
+import { MeshCardanoHeadlessWallet } from "@meshsdk/wallet";
+import { generateMnemonic } from "@meshsdk/common";
 import { IssuerSparkWallet } from "@buildonspark/issuer-sdk";
 import { deserializeBech32Address } from "@meshsdk/core-cst";
 import { encryptWithPublicKey, decryptWithPrivateKey } from "../../functions";
@@ -75,7 +76,7 @@ export class WalletDeveloperControlled {
   ): Promise<{
     info: MultiChainWalletInfo;
     sparkIssuerWallet: IssuerSparkWallet;
-    cardanoWallet: MeshWallet;
+    cardanoWallet: MeshCardanoHeadlessWallet;
   }> {
     const project = await this.sdk.getProject();
     if (!project.publicKey) {
@@ -84,19 +85,17 @@ export class WalletDeveloperControlled {
 
     const networkId = this.sdk.network === "mainnet" ? 1 : 0;
     const walletId = uuidv4();
-    const mnemonic = MeshWallet.brew() as string[];
+    const mnemonic = (await generateMnemonic(256)).split(" ");
     const encryptedKey = await encryptWithPublicKey({
       publicKey: project.publicKey,
       data: mnemonic.join(" "),
     });
 
-    const cardanoWallet = new MeshWallet({
+    const cardanoWallet = await MeshCardanoHeadlessWallet.fromMnemonic({
+      mnemonic: mnemonic,
       networkId: networkId,
-      key: { type: "mnemonic", words: mnemonic },
-      fetcher: this.sdk.providerFetcher,
-      submitter: this.sdk.providerSubmitter,
+      walletAddressType: 1,
     });
-    await cardanoWallet.init();
 
     const [{ wallet: sparkMainnetWallet }, { wallet: sparkRegtestWallet }] =
       await Promise.all([
@@ -110,9 +109,9 @@ export class WalletDeveloperControlled {
         }),
       ]);
 
-    const addresses = cardanoWallet.getAddresses();
+    const baseAddress = await cardanoWallet.getChangeAddressBech32();
     const { pubKeyHash, stakeCredentialHash } = deserializeBech32Address(
-      addresses.baseAddressBech32!,
+      baseAddress,
     );
     const [mainnetPublicKey, regtestPublicKey] = await Promise.all([
       sparkMainnetWallet.getIdentityPublicKey(),
@@ -162,14 +161,14 @@ export class WalletDeveloperControlled {
    * // Get Spark wallet address
    * const sparkAddress = await sparkWallet.getSparkAddress();
    *
-   * // Get Cardano wallet addresses
-   * const addresses = cardanoWallet.getAddresses();
+   * // Get Cardano wallet address
+   * const address = await cardanoWallet.getChangeAddressBech32();
    * ```
    */
   async initWallet(walletId: string): Promise<{
     info: MultiChainWalletInfo;
     sparkWallet: IssuerSparkWallet;
-    cardanoWallet: MeshWallet;
+    cardanoWallet: MeshCardanoHeadlessWallet;
   }> {
     if (!this.sdk.privateKey) {
       throw new Error(
@@ -184,13 +183,11 @@ export class WalletDeveloperControlled {
       encryptedDataJSON: walletInfo.key,
     });
 
-    const cardanoWallet = new MeshWallet({
+    const cardanoWallet = await MeshCardanoHeadlessWallet.fromMnemonic({
+      mnemonic: sharedMnemonic.split(" "),
       networkId: effectiveNetworkId,
-      key: { type: "mnemonic", words: sharedMnemonic.split(" ") },
-      fetcher: this.sdk.providerFetcher,
-      submitter: this.sdk.providerSubmitter,
+      walletAddressType: 1,
     });
-    await cardanoWallet.init();
 
     const sparkNetwork = effectiveNetworkId === 1 ? "MAINNET" : "REGTEST";
     const { wallet: sparkWallet } = await IssuerSparkWallet.initialize({
@@ -246,13 +243,11 @@ export class WalletDeveloperControlled {
       walletInfo.chains.cardano &&
       mnemonic
     ) {
-      const cardanoWallet = new MeshWallet({
+      const cardanoWallet = await MeshCardanoHeadlessWallet.fromMnemonic({
+        mnemonic: mnemonic.split(" "),
         networkId: networkId,
-        key: { type: "mnemonic", words: mnemonic.split(" ") },
-        fetcher: this.sdk.providerFetcher,
-        submitter: this.sdk.providerSubmitter,
+        walletAddressType: 1,
       });
-      await cardanoWallet.init();
 
       instance.cardanoWallet = cardanoWallet;
     }

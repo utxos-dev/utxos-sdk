@@ -113,8 +113,8 @@ export class Sponsorship {
     config: SponsorshipConfig;
   }) {
     const sponsorWallet = await this.getSponsorWallet(config.projectWalletId);
-    const sponsorshipWalletUtxos = await sponsorWallet.getUtxos();
-    const sponsorshipWalletAddress = await sponsorWallet.getChangeAddress();
+    const sponsorshipWalletUtxos = await sponsorWallet.getUtxosMesh();
+    const sponsorshipWalletAddress = await sponsorWallet.getChangeAddressBech32();
     if (sponsorshipWalletUtxos.length === 0) {
       throw new Error(
         "No UTXOs available in the sponsorship wallet. Please fund the wallet.",
@@ -328,7 +328,7 @@ export class Sponsorship {
         throw new Error("Failed to rebuild transaction with selected UTXO.");
       }
 
-      const signedRebuiltTxHex = await sponsorWallet.signTx(
+      const signedRebuiltTxHex = await sponsorWallet.signTxReturnFullTx(
         _rebuiltTxHex,
         true,
       );
@@ -354,8 +354,8 @@ export class Sponsorship {
     config: SponsorshipConfig;
   }) {
     const wallet = await this.getSponsorWallet(config.projectWalletId);
-    const utxos = await wallet.getUtxos();
-    const changeAddress = await wallet.getChangeAddress();
+    const utxos = await wallet.getUtxosMesh();
+    const changeAddress = await wallet.getChangeAddressBech32();
 
     // Get any UTXOs that is not the sponsor amount, use these as inputs to create more UTXOs
     const utxosAsInput = utxos.filter((utxo: any) => {
@@ -480,7 +480,7 @@ export class Sponsorship {
     }
 
     const unsignedTx = await txBuilder.complete();
-    const signedTx = await wallet.signTx(unsignedTx);
+    const signedTx = await wallet.signTxReturnFullTx(unsignedTx);
     const txHash = await this.sdk.providerSubmitter!.submitTx(signedTx);
 
     await this.sdk.axiosInstance.post(

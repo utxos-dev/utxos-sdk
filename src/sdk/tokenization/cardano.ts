@@ -1,7 +1,7 @@
 import { Web3Sdk } from "..";
 import { decryptWithPrivateKey } from "../../functions";
 import { MultiChainWalletInfo } from "../../types";
-import { MeshWallet } from "@meshsdk/wallet";
+import { MeshCardanoHeadlessWallet } from "@meshsdk/wallet";
 import {
   TokenizationTransaction,
   TokenizationFrozenAddress,
@@ -36,14 +36,14 @@ export type {
 
 export class TokenizationCardano {
   private readonly sdk: Web3Sdk;
-  private wallet: MeshWallet | null = null;
+  private wallet: MeshCardanoHeadlessWallet | null = null;
   private walletInfo: MultiChainWalletInfo | null = null;
 
   constructor({ sdk }: { sdk: Web3Sdk }) {
     this.sdk = sdk;
   }
 
-  setWallet(wallet: MeshWallet, walletInfo: MultiChainWalletInfo): void {
+  setWallet(wallet: MeshCardanoHeadlessWallet, walletInfo: MultiChainWalletInfo): void {
     this.wallet = wallet;
     this.walletInfo = walletInfo;
   }
@@ -74,14 +74,10 @@ export class TokenizationCardano {
     });
 
     const networkId = this.sdk.network === "mainnet" ? 1 : 0;
-    const wallet = new MeshWallet({
+    const wallet = await MeshCardanoHeadlessWallet.fromMnemonic({
+      mnemonic: mnemonic.split(" "),
       networkId,
-      fetcher: undefined,
-      submitter: undefined,
-      key: {
-        type: "mnemonic",
-        words: mnemonic.split(" "),
-      },
+      walletAddressType: 1,
     });
 
     this.wallet = wallet;

@@ -50,7 +50,7 @@ export default function Home() {
               refreshToken: token as string,
             });
 
-            console.log(await wallet.cardano.getChangeAddress());
+            console.log(await wallet.cardano.getChangeAddressBech32());
           }}
         >
           Auto Sign In With Token{" "}

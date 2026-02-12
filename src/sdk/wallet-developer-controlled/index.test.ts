@@ -4,31 +4,21 @@ jest.mock("uuid", () => ({
 }));
 
 // Mock external wallet SDKs
+const mockCardanoWalletInstance = {
+  getChangeAddressBech32: jest.fn().mockResolvedValue(
+    "addr_test1qz2fxv2umyhttkxyxp8x0dlpdt3k6cwng5pxj3jhsydzer3jcu5d8ps7zex2k2xt3uqxgjqnnj83ws8lhrn648jjxtwq2ytjqp",
+  ),
+};
+
 jest.mock("@meshsdk/wallet", () => ({
-  MeshWallet: Object.assign(
-    jest.fn().mockImplementation(() => ({
-      init: jest.fn().mockResolvedValue(undefined),
-      getAddresses: jest.fn().mockReturnValue({
-        baseAddressBech32:
-          "addr_test1qz2fxv2umyhttkxyxp8x0dlpdt3k6cwng5pxj3jhsydzer3jcu5d8ps7zex2k2xt3uqxgjqnnj83ws8lhrn648jjxtwq2ytjqp",
-      }),
-    })),
-    {
-      brew: jest.fn().mockReturnValue([
-        "abandon",
-        "abandon",
-        "abandon",
-        "abandon",
-        "abandon",
-        "abandon",
-        "abandon",
-        "abandon",
-        "abandon",
-        "abandon",
-        "abandon",
-        "about",
-      ]),
-    },
+  MeshCardanoHeadlessWallet: {
+    fromMnemonic: jest.fn().mockResolvedValue(mockCardanoWalletInstance),
+  },
+}));
+
+jest.mock("@meshsdk/common", () => ({
+  generateMnemonic: jest.fn().mockResolvedValue(
+    "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about",
   ),
 }));
 
@@ -67,7 +57,8 @@ jest.mock("../../functions", () => ({
 // Import after mocks
 import { WalletDeveloperControlled } from "./index";
 import { Web3Sdk } from "../index";
-import { MeshWallet } from "@meshsdk/wallet";
+import { MeshCardanoHeadlessWallet } from "@meshsdk/wallet";
+import { generateMnemonic } from "@meshsdk/common";
 import { IssuerSparkWallet } from "@buildonspark/issuer-sdk";
 import { encryptWithPublicKey, decryptWithPrivateKey } from "../../functions";
 import { v4 as uuidv4 } from "uuid";
@@ -148,12 +139,12 @@ describe("WalletDeveloperControlled", () => {
       expect(result).toHaveProperty("cardanoWallet");
     });
 
-    it("generates a new mnemonic using MeshWallet.brew", async () => {
+    it("generates a new mnemonic using generateMnemonic", async () => {
       const wallet = new WalletDeveloperControlled({ sdk: mockSdk });
 
       await wallet.createWallet();
 
-      expect(MeshWallet.brew).toHaveBeenCalled();
+      expect(generateMnemonic).toHaveBeenCalledWith(256);
     });
 
     it("encrypts mnemonic with project public key", async () => {
@@ -172,7 +163,7 @@ describe("WalletDeveloperControlled", () => {
 
       await wallet.createWallet();
 
-      expect(MeshWallet).toHaveBeenCalledWith(
+      expect(MeshCardanoHeadlessWallet.fromMnemonic).toHaveBeenCalledWith(
         expect.objectContaining({ networkId: 0 }),
       );
     });
@@ -186,7 +177,7 @@ describe("WalletDeveloperControlled", () => {
 
       await wallet.createWallet();
 
-      expect(MeshWallet).toHaveBeenCalledWith(
+      expect(MeshCardanoHeadlessWallet.fromMnemonic).toHaveBeenCalledWith(
         expect.objectContaining({ networkId: 1 }),
       );
     });
@@ -349,30 +340,27 @@ describe("WalletDeveloperControlled", () => {
       });
     });
 
-    it("creates MeshWallet with decrypted mnemonic", async () => {
+    it("creates MeshCardanoHeadlessWallet with decrypted mnemonic", async () => {
       const wallet = new WalletDeveloperControlled({ sdk: mockSdk });
 
       await wallet.initWallet("test-wallet-id");
 
-      expect(MeshWallet).toHaveBeenCalledWith(
+      expect(MeshCardanoHeadlessWallet.fromMnemonic).toHaveBeenCalledWith(
         expect.objectContaining({
-          key: {
-            type: "mnemonic",
-            words: [
-              "abandon",
-              "abandon",
-              "abandon",
-              "abandon",
-              "abandon",
-              "abandon",
-              "abandon",
-              "abandon",
-              "abandon",
-              "abandon",
-              "abandon",
-              "about",
-            ],
-          },
+          mnemonic: [
+            "abandon",
+            "abandon",
+            "abandon",
+            "abandon",
+            "abandon",
+            "abandon",
+            "abandon",
+            "abandon",
+            "abandon",
+            "abandon",
+            "abandon",
+            "about",
+          ],
         }),
       );
     });

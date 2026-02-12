@@ -1,14 +1,16 @@
 import { crypto } from "../crypto";
 
 // Mock external wallet SDKs
+const mockCardanoWalletInstance = {
+  getChangeAddressBech32: jest.fn().mockResolvedValue(
+    "addr_test1qz2fxv2umyhttkxyxp8x0dlpdt3k6cwng5pxj3jhsydzer3jcu5d8ps7zex2k2xt3uqxgjqnnj83ws8lhrn648jjxtwq2ytjqp",
+  ),
+};
+
 jest.mock("@meshsdk/wallet", () => ({
-  MeshWallet: jest.fn().mockImplementation(() => ({
-    init: jest.fn().mockResolvedValue(undefined),
-    getAddresses: jest.fn().mockResolvedValue({
-      baseAddressBech32:
-        "addr_test1qz2fxv2umyhttkxyxp8x0dlpdt3k6cwng5pxj3jhsydzer3jcu5d8ps7zex2k2xt3uqxgjqnnj83ws8lhrn648jjxtwq2ytjqp",
-    }),
-  })),
+  MeshCardanoHeadlessWallet: {
+    fromMnemonic: jest.fn().mockResolvedValue(mockCardanoWalletInstance),
+  },
 }));
 
 jest.mock("@meshsdk/common", () => ({
@@ -47,7 +49,7 @@ jest.mock("@buildonspark/spark-sdk", () => ({
 // Import after mocks
 import { clientGenerateWallet } from "./generate-wallet";
 import { generateMnemonic } from "@meshsdk/common";
-import { MeshWallet } from "@meshsdk/wallet";
+import { MeshCardanoHeadlessWallet } from "@meshsdk/wallet";
 import { EmbeddedWallet } from "@meshsdk/bitcoin";
 import { SparkWallet } from "@buildonspark/spark-sdk";
 import { decryptWithCipher } from "../crypto";
@@ -204,13 +206,13 @@ describe("clientGenerateWallet", () => {
     );
   });
 
-  it("creates MeshWallet with networkId 1", async () => {
+  it("creates MeshCardanoHeadlessWallet with networkId 1", async () => {
     const deviceKey = await deriveKeyFromPassword("device-password");
     const recoveryKey = await deriveKeyFromPassword("recovery-password");
 
     await clientGenerateWallet(deviceKey, recoveryKey);
 
-    expect(MeshWallet).toHaveBeenCalledWith(
+    expect(MeshCardanoHeadlessWallet.fromMnemonic).toHaveBeenCalledWith(
       expect.objectContaining({ networkId: 1 }),
     );
   });

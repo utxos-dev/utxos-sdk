@@ -1,4 +1,4 @@
-import { MeshWallet } from "@meshsdk/wallet";
+import { MeshCardanoHeadlessWallet } from "@meshsdk/wallet";
 import { IFetcher, ISubmitter } from "@meshsdk/common";
 import {
   EmbeddedWallet,
@@ -42,7 +42,7 @@ type Web3WalletContructorOptions = {
   projectId?: string;
   appUrl?: string;
   user?: UserSocialData;
-  cardano: MeshWallet;
+  cardano: MeshCardanoHeadlessWallet;
   bitcoin: EmbeddedWallet;
   spark: Web3SparkWallet;
 };
@@ -60,7 +60,7 @@ export class Web3Wallet {
   projectId?: string;
   appUrl: string = "https://utxos.dev/";
   user?: UserSocialData;
-  cardano: MeshWallet;
+  cardano: MeshCardanoHeadlessWallet;
   bitcoin: EmbeddedWallet;
   spark: Web3SparkWallet;
   networkId: 0 | 1;
@@ -355,23 +355,37 @@ export class Web3Wallet {
     fetcher: IFetcher | undefined;
     submitter: ISubmitter | undefined;
     keyHashes: Web3WalletKeyHashes;
-  }): Promise<MeshWallet> {
-    const cardanoWallet = new MeshWallet({
-      networkId: options.networkId,
-      key: {
-        type: "address",
-        address: getCardanoAddressFromPubkey(
-          options.keyHashes.cardanoPubKeyHash,
-          options.keyHashes.cardanoStakeCredentialHash,
-          options.networkId,
-        ),
-      },
-      fetcher: options.fetcher,
-      submitter: options.submitter,
-    });
-    await cardanoWallet.init();
+  }): Promise<MeshCardanoHeadlessWallet> {
+    const address = getCardanoAddressFromPubkey(
+      options.keyHashes.cardanoPubKeyHash,
+      options.keyHashes.cardanoStakeCredentialHash,
+      options.networkId,
+    );
 
-    cardanoWallet.signTx = async (
+    const cardanoWallet = await MeshCardanoHeadlessWallet.fromCredentialSources({
+      paymentCredentialSource: {
+        type: "signer",
+        signer: {
+          getPublicKey: async () => options.keyHashes.cardanoPubKeyHash,
+          getPublicKeyHash: async () => options.keyHashes.cardanoPubKeyHash,
+          sign: async () => "",
+          verify: async () => false,
+        },
+      },
+      stakeCredentialSource: options.keyHashes.cardanoStakeCredentialHash ? {
+        type: "signer",
+        signer: {
+          getPublicKey: async () => options.keyHashes.cardanoStakeCredentialHash,
+          getPublicKeyHash: async () => options.keyHashes.cardanoStakeCredentialHash,
+          sign: async () => "",
+          verify: async () => false,
+        },
+      } : undefined,
+      networkId: options.networkId,
+      walletAddressType: 1,
+    });
+
+    (cardanoWallet as any).signTx = async (
       unsignedTx: string,
       partialSign = false,
       returnFullTx = true,
@@ -404,7 +418,39 @@ export class Web3Wallet {
       return res.data.tx;
     };
 
-    cardanoWallet.signData = async (payload: string, address?: string) => {
+    (cardanoWallet as any).signTxReturnFullTx = async (
+      unsignedTx: string,
+      partialSign = false,
+    ) => {
+      const res: OpenWindowResult = await openWindow(
+        {
+          method: "cardano-sign-tx",
+          projectId: options.projectId,
+          unsignedTx,
+          partialSign: partialSign === true ? "true" : "false",
+          returnFullTx: "true",
+          networkId: String(options.networkId),
+        },
+        options.appUrl,
+      );
+
+      if (res.success === false)
+        throw new ApiError({
+          code: 2,
+          info: "UserDeclined - User declined to sign the message.",
+        });
+
+      if (res.data.method !== "cardano-sign-tx") {
+        throw new ApiError({
+          code: 2,
+          info: "Received the wrong response from the iframe.",
+        });
+      }
+
+      return res.data.tx;
+    };
+
+    (cardanoWallet as any).signData = async (address: string, payload: string) => {
       const res: OpenWindowResult = await openWindow(
         {
           method: "cardano-sign-data",
