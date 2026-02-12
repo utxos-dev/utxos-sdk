@@ -1,4 +1,4 @@
-import { MeshWallet } from "@meshsdk/wallet";
+import { MeshCardanoHeadlessWallet } from "@meshsdk/wallet";
 import { generateMnemonic } from "@meshsdk/common";
 import { deserializeBech32Address } from "@meshsdk/core-cst";
 import { EmbeddedWallet } from "@meshsdk/bitcoin";
@@ -47,18 +47,15 @@ export async function clientGenerateWallet(
   const bitcoinMainnetPubKeyHash = bitcoinMainnetWallet.getPublicKey();
 
   /* cardano */
-  const cardanoWallet = new MeshWallet({
+  const cardanoWallet = await MeshCardanoHeadlessWallet.fromMnemonic({
+    mnemonic: mnemonic.split(" "),
     networkId: 1,
-    key: {
-      type: "mnemonic",
-      words: mnemonic.split(" "),
-    },
+    walletAddressType: 1,
   });
-  await cardanoWallet.init();
 
-  const cardanoAddresses = await cardanoWallet.getAddresses();
+  const cardanoBaseAddress = await cardanoWallet.getChangeAddressBech32();
   const cardanoKeyHashes = deserializeBech32Address(
-    cardanoAddresses.baseAddressBech32!,
+    cardanoBaseAddress,
   );
 
   /* spark */

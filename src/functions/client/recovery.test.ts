@@ -6,9 +6,9 @@ import { shamirCombine } from "../key-shard";
 
 // Mock external wallet SDKs
 jest.mock("@meshsdk/wallet", () => ({
-  MeshWallet: jest.fn().mockImplementation(() => ({
-    init: jest.fn().mockResolvedValue(undefined),
-  })),
+  MeshCardanoHeadlessWallet: {
+    fromMnemonic: jest.fn().mockResolvedValue({}),
+  },
 }));
 
 jest.mock("@meshsdk/bitcoin", () => ({

@@ -1,6 +1,6 @@
 {
   "name": "@utxos/sdk",
-  "version": "0.1.5",
+  "version": "0.2.0",
   "description": "UTXOS SDK - Web3 infrastructure platform for UTXO blockchains",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
@@ -66,7 +66,7 @@
     "@meshsdk/common": "1.9.0-beta.89",
     "@meshsdk/core-cst": "1.9.0-beta.89",
     "@meshsdk/transaction": "1.9.0-beta.89",
-    "@meshsdk/wallet": "1.9.0-beta.89",
+    "@meshsdk/wallet": "2.0.0-beta.5",
     "@peculiar/webcrypto": "^1.5.0",
     "axios": "^1.8.3",
     "base32-encoding": "^1.0.0",

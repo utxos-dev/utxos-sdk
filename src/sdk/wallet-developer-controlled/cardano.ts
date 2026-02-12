@@ -1,5 +1,5 @@
 import { Web3Sdk } from "..";
-import { MeshWallet } from "@meshsdk/wallet";
+import { MeshCardanoHeadlessWallet } from "@meshsdk/wallet";
 import { decryptWithPrivateKey } from "../../functions";
 import { MultiChainWalletInfo, TokenCreationParams } from "../../types";
 
@@ -16,9 +16,9 @@ import { MultiChainWalletInfo, TokenCreationParams } from "../../types";
  * // Get wallets by tag
  * const treasuryWallets = await sdk.wallet.cardano.getWalletsByTag("treasury");
  *
- * // Get a specific wallet with initialized MeshWallet
+ * // Get a specific wallet with initialized MeshCardanoHeadlessWallet
  * const { info, wallet } = await sdk.wallet.cardano.getWallet("wallet-id");
- * const addresses = wallet.getAddresses();
+ * const address = await wallet.getChangeAddressBech32();
  * ```
  */
 export class CardanoWalletDeveloperControlled {
@@ -56,17 +56,17 @@ export class CardanoWalletDeveloperControlled {
   }
 
   /**
-   * Retrieves a specific Cardano wallet by ID and initializes a MeshWallet instance.
+   * Retrieves a specific Cardano wallet by ID and initializes a MeshCardanoHeadlessWallet instance.
    *
    * @param walletId - The wallet ID to retrieve
    * @param decryptKey - If true, returns the decrypted mnemonic in wallet info
-   * @returns Promise resolving to wallet info and initialized MeshWallet
+   * @returns Promise resolving to wallet info and initialized MeshCardanoHeadlessWallet
    *
    * @example
    * ```typescript
    * const { info, wallet } = await sdk.wallet.cardano.getWallet("wallet-id");
-   * const addresses = wallet.getAddresses();
-   * console.log("Base address:", addresses.baseAddressBech32);
+   * const address = await wallet.getChangeAddressBech32();
+   * console.log("Base address:", address);
    * ```
    */
   async getWallet(
@@ -74,7 +74,7 @@ export class CardanoWalletDeveloperControlled {
     decryptKey = false,
   ): Promise<{
     info: MultiChainWalletInfo;
-    wallet: MeshWallet;
+    wallet: MeshCardanoHeadlessWallet;
   }> {
     if (this.sdk.privateKey === undefined) {
       throw new Error("Private key not found");
@@ -97,16 +97,11 @@ export class CardanoWalletDeveloperControlled {
       }
 
       const networkId = this.sdk.network === "mainnet" ? 1 : 0;
-      const wallet = new MeshWallet({
+      const wallet = await MeshCardanoHeadlessWallet.fromMnemonic({
+        mnemonic: mnemonic.split(" "),
         networkId: networkId,
-        key: {
-          type: "mnemonic",
-          words: mnemonic.split(" "),
-        },
-        fetcher: this.sdk.providerFetcher,
-        submitter: this.sdk.providerSubmitter,
+        walletAddressType: 1,
       });
-      await wallet.init();
 
       return { info: web3Wallet, wallet: wallet };
     }

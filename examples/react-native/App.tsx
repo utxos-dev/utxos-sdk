@@ -64,7 +64,7 @@ export default function App() {
       const user = web3Wallet.getUser();
 
       const cardanoAddress =
-        (await web3Wallet.cardano.getChangeAddress()) || "";
+        (await web3Wallet.cardano.getChangeAddressBech32()) || "";
       const bitcoinAddresses = await web3Wallet.bitcoin.getAddresses();
       const bitcoinAddress = bitcoinAddresses[0]?.address || "";
       const sparkAddressInfo = web3Wallet.spark.getAddress();

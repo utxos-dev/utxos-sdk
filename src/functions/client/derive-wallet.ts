@@ -1,4 +1,5 @@
 import { IBitcoinProvider } from "@meshsdk/bitcoin";
+import { IFetcher } from "@meshsdk/common";
 import { decryptWithCipher } from "../crypto";
 import { combineShardsBuildWallet } from "../key-shard";
 
@@ -8,6 +9,7 @@ export async function clientDeriveWallet(
   custodialShard: string,
   networkId: 0 | 1,
   bitcoinProvider?: IBitcoinProvider,
+  fetcher?: IFetcher,
 ) {
   const keyShare1 = await decryptWithCipher({
     encryptedDataJSON: encryptedKeyShard,
@@ -21,6 +23,7 @@ export async function clientDeriveWallet(
       keyShare1,
       keyShare2,
       bitcoinProvider,
+      fetcher,
     );
 
   return { bitcoinWallet, cardanoWallet, sparkWallet, key };
