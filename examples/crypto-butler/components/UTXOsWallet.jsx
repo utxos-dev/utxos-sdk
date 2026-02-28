@@ -51,7 +51,6 @@ export default function UTXOsWallet({ onConnected }) {
           <div className="bg-navy-800 rounded-2xl overflow-hidden shadow-2xl border border-gold-500/20 relative"
                style={{ width: 480, height: 640 }}>
             
-            {/* Close button */}
             <button
               onClick={() => setShowIframe(false)}
               className="absolute top-3 right-3 text-gray-400 hover:text-white z-10 text-lg"
@@ -59,7 +58,6 @@ export default function UTXOsWallet({ onConnected }) {
               x
             </button>
 
-            {/* UTXOs iframe */}
             <iframe
               ref={iframeRef}
               src={iframeUrl}

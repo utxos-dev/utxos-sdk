@@ -26,7 +26,7 @@ export default function WalletConnect({ onConnected }) {
     setWallets(detected);
   }, []);
 
-  // CIP-30 wallet connection (existing logic)
+  // CIP-30 wallet connection
   async function connectWallet(wallet) {
     try {
       const api = await wallet.api.enable();

@@ -13,3 +13,23 @@ export async function GET(req, { params }) {
   const data = await res.json();
   return Response.json(data);
 }
+
+export async function POST(req) {
+  try {
+    const { token } = await req.json();
+    
+    const res = await fetch('https://api.utxos.dev/v1/wallet/cardano/address', {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'x-project-id': process.env.UTXOS_PROJECT_ID,
+      }
+    });
+
+    const data = await res.json();
+    return Response.json({ address: data.address, balance: data.balance });
+
+  } catch (err) {
+    console.error('Wallet error:', err.message);
+    return Response.json({ error: err.message }, { status: 500 });
+  }
+}

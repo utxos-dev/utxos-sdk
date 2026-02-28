@@ -3,25 +3,21 @@
 
 import Anthropic from '@anthropic-ai/sdk';
 
-console.log('KEY:', process.env.ANTHROPIC_API_KEY?.slice(0, 10));
-
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-// ── LIVE YIELD DATA from DeFiLlama ──────────────────────────────
 async function fetchYields() {
   try {
     const res = await fetch('https://yields.llama.fi/pools', {
-      next: { revalidate: 300 }, // cache 5 min
+      next: { revalidate: 300 },
     });
     const data = await res.json();
 
-    // Filter for stablecoin pools on Cardano + major chains, good liquidity
-    const pools = data.data
+    return data.data
       .filter(p =>
         p.stablecoin &&
         p.tvlUsd > 1_000_000 &&
         p.apy > 0 &&
-        p.apy < 100 && // filter insane APYs
+        p.apy < 100 &&
         ['Cardano', 'Ethereum', 'Arbitrum'].includes(p.chain)
       )
       .sort((a, b) => b.tvlUsd - a.tvlUsd)
@@ -32,12 +28,9 @@ async function fetchYields() {
         chain: p.chain,
         apy: parseFloat(p.apy.toFixed(2)),
         tvlUsd: p.tvlUsd,
-        category: categorize(p.apy),
       }));
-
-    return pools;
   } catch (err) {
-    console.error('DeFiLlama fetch failed, using fallback:', err);
+    console.error('Yield fetch failed:', err);
     return FALLBACK_YIELDS;
   }
 }
@@ -48,24 +41,28 @@ function categorize(apy) {
   return 'aggressive';
 }
 
-// ── AGENT 1: RESEARCHER ─────────────────────────────────────────
 async function researcherAgent(yields) {
   const res = await client.messages.create({
     model: 'claude-sonnet-4-20250514',
     max_tokens: 1000,
-    system: `You are a DeFi yield researcher. Analyze yield opportunities and return ONLY valid JSON, no markdown.`,
+    system: `You are a DeFi yield researcher. 
+             Analyze yield opportunities and return ONLY valid JSON.`,
     messages: [{
       role: 'user',
-      content: `Analyze these yield pools and identify the top 6 opportunities across risk categories.
+      content: `Analyze these yield pools and identify the top 6 
+                opportunities across risk categories.
       
-Pools: ${JSON.stringify(yields, null, 2)}
+      Pools: ${JSON.stringify(yields, null, 2)}
 
-Return ONLY this JSON structure:
-{
-  "conservative": [{"protocol": "", "pool": "", "chain": "", "apy": 0, "reasoning": ""}],
-  "moderate": [{"protocol": "", "pool": "", "chain": "", "apy": 0, "reasoning": ""}],
-  "aggressive": [{"protocol": "", "pool": "", "chain": "", "apy": 0, "reasoning": ""}]
-}`
+      Return ONLY this JSON structure:
+      {
+        "conservative": [{"protocol": "", "pool": "", "chain": "", 
+                          "apy": 0, "reasoning": ""}],
+        "moderate":     [{"protocol": "", "pool": "", "chain": "", 
+                          "apy": 0, "reasoning": ""}],
+        "aggressive":   [{"protocol": "", "pool": "", "chain": "", 
+                          "apy": 0, "reasoning": ""}]
+      }`
     }]
   });
 
@@ -73,38 +70,43 @@ Return ONLY this JSON structure:
   return JSON.parse(text);
 }
 
-// ── AGENT 2: RISK AGENT ─────────────────────────────────────────
 async function riskAgent(userGoal, researcherOutput) {
   const res = await client.messages.create({
     model: 'claude-sonnet-4-20250514',
     max_tokens: 800,
-    system: `You are a risk analyst for DeFi portfolios. Return ONLY valid JSON, no markdown.`,
+    system: `You are a risk analyst for DeFi portfolios. 
+             Return ONLY valid JSON.`,
     messages: [{
       role: 'user',
       content: `User goal: "${userGoal}"
+      Available opportunities: ${JSON.stringify(researcherOutput)}
 
-Available opportunities: ${JSON.stringify(researcherOutput, null, 2)}
+      Extract:
+      1. Risk tolerance (conservative/moderate/aggressive)
+      2. Time horizon in months
+      3. Target amount in USD
+      4. Primary goal (grow/preserve/income)
 
-Extract the user's:
-1. Risk tolerance (conservative/moderate/aggressive)
-2. Time horizon in months
-3. Target amount in USD
-4. Primary goal (grow/preserve/income)
+      Score each opportunity 1-10 for fit.
 
-Then score each opportunity 1-10 for fit.
-
-Return ONLY this JSON:
-{
-  "riskProfile": {
-    "tolerance": "moderate",
-    "timeHorizonMonths": 12,
-    "targetAmountUsd": 5000,
-    "primaryGoal": "grow"
-  },
-  "scoredOpportunities": [
-    {"protocol": "", "pool": "", "chain": "", "apy": 0, "fitScore": 8, "rationale": ""}
-  ]
-}`
+      Return ONLY this JSON:
+      {
+        "riskProfile": {
+          "tolerance": "moderate",
+          "timeHorizonMonths": 12,
+          "targetAmountUsd": 5000,
+          "primaryGoal": "grow"
+        },
+        "scoredOpportunities": [
+          {
+            "protocol": "",
+            "pool": "",
+            "apy": 0,
+            "fitScore": 8,
+            "rationale": ""
+          }
+        ]
+      }`
     }]
   });
 
@@ -112,7 +114,6 @@ Return ONLY this JSON:
   return JSON.parse(text);
 }
 
-// ── AGENT 3: CFO AGENT ──────────────────────────────────────────
 async function cfoAgent(userGoal, riskOutput) {
   const { riskProfile, scoredOpportunities } = riskOutput;
   const amount = riskProfile.targetAmountUsd;
@@ -208,9 +209,7 @@ export async function POST(req) {
   }
 }
 
-// ── TESTNET SIMULATION ──────────────────────────────────────────
 function generateTestnetSimulation(allocation, riskProfile) {
-  // Generates fake but realistic Cardano Preprod tx hashes
   const txs = allocation.map((alloc, i) => ({
     step: i + 1,
     action: `Deposit ${alloc.amountUsd.toFixed(0)} USDC → ${alloc.protocol} ${alloc.pool}`,
