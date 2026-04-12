@@ -17,6 +17,8 @@ import {
   ListFrozenAddressesParams,
   ListTokenizationPoliciesParams,
 } from "../../types/cardano/tokenization";
+import { trackDeveloperTransaction } from "../../internal/metrics";
+
 
 export type {
   CreateTokenParams,
@@ -313,6 +315,13 @@ export class TokenizationCardano {
         status: params.status || "success",
         metadata: params.metadata,
       });
+      await trackDeveloperTransaction(
+        this.sdk.axiosInstance,
+        this.sdk.network,
+        "cardano",
+        "tx-submit",
+      );
+
     } catch (error) {
       console.warn(`Failed to log ${params.type} transaction:`, error);
     }
