@@ -4,6 +4,8 @@ import { Web3Project } from "../types";
 import { IFetcher, ISubmitter } from "@meshsdk/common";
 import { Sponsorship } from "./sponsorship";
 import { Tokenization } from "./tokenization";
+import { trackPlatformMetric } from "../internal/metrics";
+
 
 export const meshUniversalStaticUtxo = {
   mainnet: {
@@ -148,7 +150,10 @@ export class Web3Sdk {
 
     if (status === 200) {
       this.project = data as Web3Project;
+      await trackPlatformMetric(this.axiosInstance, "active-projects");
+      await trackPlatformMetric(this.axiosInstance, "mau");
       return this.project;
+
     }
 
     throw new Error("Failed to get project");

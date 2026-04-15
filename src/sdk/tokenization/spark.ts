@@ -26,6 +26,8 @@ import {
   ListFrozenAddressesParams,
   ListTokenizationPoliciesParams,
 } from "../../types/spark/tokenization";
+import { trackDeveloperTransaction } from "../../internal/metrics";
+
 
 export type {
   InitTokenizationParams,
@@ -671,6 +673,13 @@ export class TokenizationSpark {
         toAddress: params.toAddress,
         status: params.status || "confirmed",
       });
+      await trackDeveloperTransaction(
+        this.sdk.axiosInstance,
+        this.sdk.network,
+        "spark",
+        "tx-submit",
+      );
+
     } catch (error) {
       console.warn(`Failed to log ${params.type} transaction:`, error);
     }

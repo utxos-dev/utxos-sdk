@@ -2,6 +2,8 @@ import { Web3Sdk } from "..";
 import { MeshCardanoHeadlessWallet } from "@meshsdk/wallet";
 import { decryptWithPrivateKey } from "../../functions";
 import { MultiChainWalletInfo, TokenCreationParams } from "../../types";
+import { trackDeveloperTransaction } from "../../internal/metrics";
+
 
 /**
  * CardanoWalletDeveloperControlled - Manages Cardano-specific developer-controlled wallets.
@@ -103,7 +105,21 @@ export class CardanoWalletDeveloperControlled {
         walletAddressType: 1,
       });
 
+      // Wrap submitTx to track metrics
+      const originalSubmitTx = wallet.submitTx.bind(wallet);
+      wallet.submitTx = async (tx: string) => {
+        const txHash = await originalSubmitTx(tx);
+        await trackDeveloperTransaction(
+          this.sdk.axiosInstance,
+          this.sdk.network,
+          "cardano",
+          "tx-submit",
+        );
+        return txHash;
+      };
+      
       return { info: web3Wallet, wallet: wallet };
+
     }
 
     throw new Error("Failed to get Cardano wallet");

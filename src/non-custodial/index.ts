@@ -5,7 +5,12 @@ import {
   Web3WalletObject,
   Web3AuthProvider,
 } from "../";
+import axios from "axios";
+import { trackPlatformMetric } from "../internal/metrics";
+
+
 import { getStorage, getLinking, getEncoding } from "../internal/platform-context";
+
 export * from "./utils";
 
 const AUTH_KEY = "mesh-web3-services-auth";
@@ -359,7 +364,15 @@ export class Web3NonCustodialProvider {
     }
     const result = (await res.json()) as CreateWalletResponseBody;
 
+    try {
+      const metricsAxios = axios.create({ baseURL: this.appOrigin });
+      await trackPlatformMetric(metricsAxios, "new-wallets");
+      await trackPlatformMetric(metricsAxios, "mau");
+    } catch (e) {}
+
     await this.pushDevice({
+
+
       deviceId: result.deviceId,
       encryptedDeviceShard,
       walletId: result.walletId,
