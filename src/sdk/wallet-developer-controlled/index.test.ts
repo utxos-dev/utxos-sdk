@@ -511,14 +511,18 @@ describe("WalletDeveloperControlled", () => {
   });
 
   describe("getProjectWallet", () => {
-    it("fetches wallet by ID from API", async () => {
-      const mockWalletInfo = {
+    it("fetches wallet by ID from API and normalizes flat response to nested chains shape", async () => {
+      const flatBackendResponse = {
         id: "test-wallet-id",
         projectId: "test-project-id",
+        key: mockEncryptedData,
+        pubKeyHash: "mock-cardano-pub-key-hash",
+        stakeCredentialHash: "mock-cardano-stake-hash",
+        tags: ["treasury"],
       };
       mockAxiosInstance.get.mockResolvedValue({
         status: 200,
-        data: mockWalletInfo,
+        data: flatBackendResponse,
       });
       const wallet = new WalletDeveloperControlled({ sdk: mockSdk });
 
@@ -527,7 +531,37 @@ describe("WalletDeveloperControlled", () => {
       expect(mockAxiosInstance.get).toHaveBeenCalledWith(
         "api/project-wallet/test-project-id/test-wallet-id",
       );
-      expect(result).toEqual(mockWalletInfo);
+      expect(result).toEqual({
+        id: "test-wallet-id",
+        projectId: "test-project-id",
+        key: mockEncryptedData,
+        tags: ["treasury"],
+        chains: {
+          cardano: {
+            pubKeyHash: "mock-cardano-pub-key-hash",
+            stakeCredentialHash: "mock-cardano-stake-hash",
+          },
+        },
+      });
+    });
+
+    it("defaults tags to empty array when missing from backend", async () => {
+      mockAxiosInstance.get.mockResolvedValue({
+        status: 200,
+        data: {
+          id: "wid",
+          projectId: "test-project-id",
+          key: mockEncryptedData,
+          pubKeyHash: "pkh",
+          stakeCredentialHash: null,
+        },
+      });
+      const wallet = new WalletDeveloperControlled({ sdk: mockSdk });
+
+      const result = await wallet.getProjectWallet("wid");
+
+      expect(result.tags).toEqual([]);
+      expect(result.chains.cardano?.stakeCredentialHash).toBeNull();
     });
 
     it("throws if wallet not found", async () => {
@@ -605,6 +639,97 @@ describe("WalletDeveloperControlled", () => {
       await expect(wallet.getProjectWallets()).rejects.toThrow(
         "Failed to get project wallets",
       );
+    });
+  });
+
+  describe("getProjectWalletsByTag", () => {
+    it("fetches wallets by tag and normalizes each flat response to nested chains shape", async () => {
+      const flatBackendResponse = [
+        {
+          id: "wallet-1",
+          projectId: "test-project-id",
+          key: mockEncryptedData,
+          pubKeyHash: "pkh-1",
+          stakeCredentialHash: "sch-1",
+          tags: ["treasury"],
+        },
+        {
+          id: "wallet-2",
+          projectId: "test-project-id",
+          key: mockEncryptedData,
+          pubKeyHash: "pkh-2",
+          stakeCredentialHash: null,
+          tags: ["treasury"],
+        },
+      ];
+      mockAxiosInstance.get.mockResolvedValue({
+        status: 200,
+        data: flatBackendResponse,
+      });
+      const wallet = new WalletDeveloperControlled({ sdk: mockSdk });
+
+      const result = await wallet.getProjectWalletsByTag("treasury");
+
+      expect(mockAxiosInstance.get).toHaveBeenCalledWith(
+        "api/project-wallet/test-project-id/tag/treasury",
+      );
+      expect(result).toHaveLength(2);
+      expect(result[0]).toEqual({
+        id: "wallet-1",
+        projectId: "test-project-id",
+        key: mockEncryptedData,
+        tags: ["treasury"],
+        chains: {
+          cardano: { pubKeyHash: "pkh-1", stakeCredentialHash: "sch-1" },
+        },
+      });
+      expect(result[1]?.chains.cardano?.stakeCredentialHash).toBeNull();
+      expect(result[0]?.chains.spark).toBeUndefined();
+    });
+
+    it("URL-encodes tags with special characters", async () => {
+      mockAxiosInstance.get.mockResolvedValue({ status: 200, data: [] });
+      const wallet = new WalletDeveloperControlled({ sdk: mockSdk });
+
+      await wallet.getProjectWalletsByTag("team/alpha beta");
+
+      expect(mockAxiosInstance.get).toHaveBeenCalledWith(
+        "api/project-wallet/test-project-id/tag/team%2Falpha%20beta",
+      );
+    });
+
+    it("returns empty array when no wallets match", async () => {
+      mockAxiosInstance.get.mockResolvedValue({ status: 200, data: [] });
+      const wallet = new WalletDeveloperControlled({ sdk: mockSdk });
+
+      const result = await wallet.getProjectWalletsByTag("nonexistent");
+
+      expect(result).toEqual([]);
+    });
+
+    it("throws if tag is empty string", async () => {
+      const wallet = new WalletDeveloperControlled({ sdk: mockSdk });
+
+      await expect(wallet.getProjectWalletsByTag("")).rejects.toThrow(
+        "tag is required",
+      );
+    });
+
+    it("throws if tag is whitespace only", async () => {
+      const wallet = new WalletDeveloperControlled({ sdk: mockSdk });
+
+      await expect(wallet.getProjectWalletsByTag("   ")).rejects.toThrow(
+        "tag is required",
+      );
+    });
+
+    it("throws if API call fails", async () => {
+      mockAxiosInstance.get.mockResolvedValue({ status: 500 });
+      const wallet = new WalletDeveloperControlled({ sdk: mockSdk });
+
+      await expect(
+        wallet.getProjectWalletsByTag("treasury"),
+      ).rejects.toThrow("Failed to get project wallets by tag");
     });
   });
 

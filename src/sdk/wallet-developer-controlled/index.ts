@@ -261,7 +261,7 @@ export class WalletDeveloperControlled {
       instance.cardanoWallet = cardanoWallet;
     }
 
-    if ((chain === "spark" || !chain) && walletInfo.chains.spark && mnemonic) {
+    if ((chain === "spark" || !chain) && mnemonic) {
       const sparkNetwork = networkId === 1 ? "MAINNET" : "REGTEST";
       const { wallet: sparkWallet } = await IssuerSparkWallet.initialize({
         mnemonicOrSeed: mnemonic,
@@ -272,6 +272,36 @@ export class WalletDeveloperControlled {
     }
 
     return instance;
+  }
+
+  /**
+   * Normalizes the backend's flat wallet response shape into the nested
+   * `MultiChainWalletInfo` shape consumed by the rest of the SDK. The
+   * backend's `ProjectWallet` table currently stores Cardano fields only at
+   * the top level (`pubKeyHash`, `stakeCredentialHash`); Spark public keys
+   * are not persisted, so `chains.spark` is omitted and re-derived from the
+   * mnemonic when needed.
+   */
+  private normalizeWalletInfo(flat: {
+    id: string;
+    projectId: string;
+    key: string;
+    pubKeyHash: string;
+    stakeCredentialHash: string | null;
+    tags?: string[];
+  }): MultiChainWalletInfo {
+    return {
+      id: flat.id,
+      projectId: flat.projectId,
+      key: flat.key,
+      tags: flat.tags ?? [],
+      chains: {
+        cardano: {
+          pubKeyHash: flat.pubKeyHash,
+          stakeCredentialHash: flat.stakeCredentialHash,
+        },
+      },
+    };
   }
 
   /**
@@ -286,7 +316,7 @@ export class WalletDeveloperControlled {
     );
 
     if (status === 200) {
-      return data as MultiChainWalletInfo;
+      return this.normalizeWalletInfo(data);
     }
 
     throw new Error("Project wallet not found");
@@ -372,6 +402,36 @@ export class WalletDeveloperControlled {
     }
 
     return allWallets;
+  }
+
+  /**
+   * Retrieves all project wallets that have a given tag.
+   *
+   * @param tag - The tag to filter wallets by (case-sensitive, exact match)
+   * @returns Promise that resolves to an array of matching wallet info
+   *
+   * @example
+   * ```typescript
+   * const wallets = await sdk.wallet.getProjectWalletsByTag("treasury");
+   * console.log(`Found ${wallets.length} treasury wallets`);
+   * ```
+   */
+  async getProjectWalletsByTag(tag: string): Promise<MultiChainWalletInfo[]> {
+    if (!tag || tag.trim() === "") {
+      throw new Error("tag is required");
+    }
+
+    const { data, status } = await this.sdk.axiosInstance.get(
+      `api/project-wallet/${this.sdk.projectId}/tag/${encodeURIComponent(tag)}`,
+    );
+
+    if (status === 200) {
+      return (data as unknown[]).map((w) =>
+        this.normalizeWalletInfo(w as Parameters<typeof this.normalizeWalletInfo>[0]),
+      );
+    }
+
+    throw new Error("Failed to get project wallets by tag");
   }
 }
 
