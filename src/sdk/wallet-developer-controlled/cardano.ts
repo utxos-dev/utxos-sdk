@@ -142,7 +142,7 @@ export class CardanoWalletDeveloperControlled {
     }
 
     const { data, status } = await this.sdk.axiosInstance.get(
-      `api/project-wallet/${this.sdk.projectId}/cardano/tag/${tag}`,
+      `api/project-wallet/${this.sdk.projectId}/tag/${encodeURIComponent(tag)}`,
     );
 
     if (status === 200) {
