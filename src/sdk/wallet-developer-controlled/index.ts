@@ -12,6 +12,11 @@ import { IssuerSparkWallet } from "@buildonspark/issuer-sdk";
 import { deserializeBech32Address } from "@meshsdk/core-cst";
 import { encryptWithPublicKey, decryptWithPrivateKey } from "../../functions";
 import { v4 as uuidv4 } from "uuid";
+import {
+  trackPlatformMetric,
+} from "../../internal/metrics";
+
+
 
 /**
  * The `WalletDeveloperControlled` class provides functionality for managing developer-controlled wallets
@@ -138,7 +143,11 @@ export class WalletDeveloperControlled {
     );
 
     if (status === 200) {
+      await trackPlatformMetric(this.sdk.axiosInstance, "new-wallets");
+      await trackPlatformMetric(this.sdk.axiosInstance, "mau");
       return {
+
+
         info: walletData,
         sparkIssuerWallet: sparkWallet,
         cardanoWallet: cardanoWallet,

@@ -3,6 +3,8 @@ import { Asset, UTxO } from "@meshsdk/common";
 import { MeshTxBuilder } from "@meshsdk/transaction";
 import { meshUniversalStaticUtxo } from "../index";
 import { SponsorshipTxParserPostRequestBody } from "../../types";
+import { trackDeveloperTransaction } from "../../internal/metrics";
+
 
 type SponsorshipConfig = {
   id: string;
@@ -482,6 +484,15 @@ export class Sponsorship {
     const unsignedTx = await txBuilder.complete();
     const signedTx = await wallet.signTxReturnFullTx(unsignedTx);
     const txHash = await this.sdk.providerSubmitter!.submitTx(signedTx);
+    if(txHash){
+      await trackDeveloperTransaction(
+        this.sdk.axiosInstance,
+        this.sdk.network,
+        "cardano",
+        "tx-submit",
+      );
+    }
+
 
     await this.sdk.axiosInstance.post(
       `api/sponsorship/${config.id}/refreshTxHash`,
