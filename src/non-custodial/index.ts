@@ -104,7 +104,11 @@ export type Web3NonCustodialProviderParams = {
   googleOauth2ClientId: string;
   twitterOauth2ClientId: string;
   discordOauth2ClientId: string;
-  appleOauth2ClientId: string;
+  /**
+   * @deprecated Apple Sign In was removed. Omit this field. If a non-empty value is passed,
+   * the constructor throws so misconfiguration is visible immediately instead of failing later.
+   */
+  appleOauth2ClientId?: string;
 };
 
 export type Web3NonCustodialProviderUser = {
@@ -183,9 +187,13 @@ export class Web3NonCustodialProvider {
   googleOauth2ClientId: string;
   twitterOauth2ClientId: string;
   discordOauth2ClientId: string;
-  appleOauth2ClientId: string;
 
   constructor(params: Web3NonCustodialProviderParams) {
+    if (params.appleOauth2ClientId) {
+      throw new Error(
+        "Apple Sign no longer supported in SDK.",
+      );
+    }
     this.projectId = params.projectId;
     this.appOrigin = params.appOrigin ? params.appOrigin : "https://utxos.dev";
     this.storageLocation = params.storageLocation
@@ -194,7 +202,6 @@ export class Web3NonCustodialProvider {
     this.googleOauth2ClientId = params.googleOauth2ClientId;
     this.twitterOauth2ClientId = params.twitterOauth2ClientId;
     this.discordOauth2ClientId = params.discordOauth2ClientId;
-    this.appleOauth2ClientId = params.appleOauth2ClientId;
   }
 
   private base64Encode(str: string): string {
@@ -492,6 +499,11 @@ export class Web3NonCustodialProvider {
     redirectUrl: string,
     callback: (authorizationUrl: string) => void,
   ) {
+    if ((provider as string) === "apple") {
+      throw new Error(
+        "Apple Sign In was removed. Use google, discord, twitter, or email.",
+      );
+    }
     if (provider === "google") {
       const googleState = JSON.stringify({
         redirect: redirectUrl,
@@ -548,25 +560,6 @@ export class Web3NonCustodialProvider {
       const twitterAuthorizeUrl =
         "https://x.com/i/oauth2/authorize?" + twitterSearchParams.toString();
       callback(twitterAuthorizeUrl);
-      return;
-    } else if (provider === "apple") {
-      const appleState = JSON.stringify({
-        redirect: redirectUrl,
-        provider: "apple",
-        projectId: this.projectId,
-      });
-      const appleSearchParams = new URLSearchParams({
-        client_id: this.appleOauth2ClientId,
-        response_type: "code",
-        redirect_uri: this.appOrigin + "/api/auth",
-        response_mode: "form_post",
-        scope: "name email",
-        state: this.base64Encode(appleState),
-      });
-      const appleAuthorizeUrl =
-        "https://appleid.apple.com/auth/authorize?" +
-        appleSearchParams.toString();
-      callback(appleAuthorizeUrl);
       return;
     } else if (provider === "email") {
       // Email uses OTP flow, not OAuth - this method should not be called for email
