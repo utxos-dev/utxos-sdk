@@ -8,7 +8,7 @@ Visit [UTXOS](https://utxos.dev/) for more information.
 
 - **Multi-Chain Support**: Bitcoin, Cardano, and Spark blockchains
 - **Developer-Controlled Wallets**: Manage wallets on behalf of users with secure backend integration
-- **User-Controlled Wallets**: Non-custodial wallet solutions with OAuth integration (Google, Twitter, Discord, Apple)
+- **User-Controlled Wallets**: Non-custodial wallet solutions with OAuth integration (Google, Twitter, Discord)
 - **Transaction Sponsorship**: Sponsor transactions for gasless user experiences
 - **Shard-Based Security**: Client-side key management with multi-shard encryption
 - **TypeScript Native**: Full type safety and IntelliSense support
