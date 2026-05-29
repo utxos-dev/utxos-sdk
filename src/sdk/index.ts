@@ -126,6 +126,7 @@ export class Web3Sdk {
     this.axiosInstance = axios.create({
       baseURL: this.appUrl,
       headers: { "x-api-key": apiKey },
+      validateStatus: () => true,
     });
 
     this.wallet = new WalletDeveloperControlled({
