@@ -103,6 +103,8 @@ export class CardanoWalletDeveloperControlled {
         mnemonic: mnemonic.split(" "),
         networkId: networkId,
         walletAddressType: 1,
+        fetcher: this.sdk.providerFetcher,
+        submitter: this.sdk.providerSubmitter,
       });
 
       // Wrap submitTx to track metrics
