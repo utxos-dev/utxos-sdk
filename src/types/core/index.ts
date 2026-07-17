@@ -24,6 +24,10 @@ export type Web3ProjectBranding = {
   twitterEnabled?: boolean;
   discordEnabled?: boolean;
   googleEnabled?: boolean;
+  /**
+   * Present on legacy API payloads. Apple Sign In is no longer offered; safe to ignore in UI.
+   * @deprecated
+   */
   appleEnabled?: boolean;
   emailEnabled?: boolean;
 };
@@ -58,7 +62,7 @@ export type Web3JWTBody = {
   username: string | null;
 };
 
-export type Web3AuthProvider = "google" | "discord" | "twitter" | "apple" | "email";
+export type Web3AuthProvider = "google" | "discord" | "twitter" | "email";
 
 /** Role a user can have within a project */
 export type Web3ProjectRole = "owner" | "admin" | "developer" | "billing";

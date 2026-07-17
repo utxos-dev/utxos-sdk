@@ -21,7 +21,6 @@ const PROVIDERS: { id: Web3AuthProvider; label: string; icon: string }[] = [
   { id: "google", label: "Google", icon: "G" },
   { id: "discord", label: "Discord", icon: "D" },
   { id: "twitter", label: "Twitter", icon: "X" },
-  { id: "apple", label: "Apple", icon: "" },
   { id: "email", label: "Email", icon: "@" },
 ];
 

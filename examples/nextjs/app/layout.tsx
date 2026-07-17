@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "UTXOS Wallet | Web3 Wallet as a Service",
-  description: "Connect your wallet with social login - Google, Discord, Twitter, Apple, Email",
+  description: "Connect your wallet with social login — Google, Discord, Twitter, Email",
 };
 
 export default function RootLayout({
