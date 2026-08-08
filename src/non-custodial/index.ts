@@ -644,6 +644,78 @@ export class Web3NonCustodialProvider {
     return this.getUser();
   }
 
+  /**
+   * Initiates FC Barcelona Identity (passwordless OAuth 2.0) login.
+   *
+   * FCB uses a two-step flow that differs from standard OAuth providers:
+   *   1. Your server calls FCB's init endpoint to create a passwordless session
+   *      and trigger the OTP / magic-link email to the user.
+   *   2. The browser is redirected to FCB's authorize page where the user
+   *      enters the OTP or clicks the magic link.
+   *   3. FCB redirects back to your app's /api/auth callback with a code,
+   *      which completes the token exchange automatically.
+   *
+   * @example
+   * const { error } = await provider.signInWithFcb(
+   *   { email: "fan@example.com", redirectUrl: window.location.origin + "/auth/callback" },
+   *   (authorizeUrl) => { window.location.href = authorizeUrl; },
+   * );
+   * if (error) console.error(error.message);
+   *
+   * @param params.email       - The user's FC Barcelona account email address.
+   * @param params.redirectUrl - Where to send the user after FCB authentication
+   *                             completes (must be within your whitelisted origins).
+   * @param params.mode        - "login" (default) or "register" for new FCB accounts.
+   * @param params.firstName   - Required when mode is "register".
+   * @param params.lastName    - Required when mode is "register".
+   * @param callback           - Receives the FCB authorize URL. Redirect the user to it.
+   * @returns                  - { error: null } on success, { error: Error } on failure.
+   */
+  async signInWithFcb(
+    params: {
+      email: string;
+      redirectUrl: string;
+      mode?: "login" | "register";
+      firstName?: string;
+      lastName?: string;
+    },
+    callback: (authorizeUrl: string) => void,
+  ): Promise<{ error: Error | null }> {
+    const { email, redirectUrl, mode = "login", firstName, lastName } = params;
+
+    const state = this.base64Encode(
+      JSON.stringify({
+        redirect: redirectUrl,
+        provider: "fcb",
+        projectId: this.projectId,
+      }),
+    );
+
+    const body =
+      mode === "register"
+        ? { type: "register", email, firstName, lastName, state }
+        : { type: "login", email, state };
+
+    const res = await fetch(this.appOrigin + "/api/auth/fcb/init", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      return {
+        error: new Error(
+          (data as { error?: string }).error ?? `FCB init failed (HTTP ${res.status})`,
+        ),
+      };
+    }
+
+    const { authorizeUrl } = (await res.json()) as { authorizeUrl: string };
+    callback(authorizeUrl);
+    return { error: null };
+  }
+
   private async putInStorage<ObjectType extends object>(
     key: string,
     data: ObjectType,
