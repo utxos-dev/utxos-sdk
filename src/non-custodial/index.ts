@@ -8,8 +8,11 @@ import {
 import axios from "axios";
 import { trackPlatformMetric } from "../internal/metrics";
 
-
-import { getStorage, getLinking, getEncoding } from "../internal/platform-context";
+import {
+  getStorage,
+  getLinking,
+  getEncoding,
+} from "../internal/platform-context";
 
 export * from "./utils";
 
@@ -190,9 +193,7 @@ export class Web3NonCustodialProvider {
 
   constructor(params: Web3NonCustodialProviderParams) {
     if (params.appleOauth2ClientId) {
-      throw new Error(
-        "Apple Sign no longer supported in SDK.",
-      );
+      throw new Error("Apple Sign no longer supported in SDK.");
     }
     this.projectId = params.projectId;
     this.appOrigin = params.appOrigin ? params.appOrigin : "https://utxos.dev";
@@ -211,7 +212,7 @@ export class Web3NonCustodialProvider {
 
   private base64Decode(base64: string): string {
     const encoding = getEncoding();
-    const normalized = base64.replace(/-/g, '+').replace(/_/g, '/');
+    const normalized = base64.replace(/-/g, "+").replace(/_/g, "/");
     return encoding.bytesToUtf8(encoding.base64ToBytes(normalized));
   }
 
@@ -316,7 +317,7 @@ export class Web3NonCustodialProvider {
       }
     | { error: null; data: { deviceId: string; walletId: string } }
   > {
-    const userAgent = getLinking().getUserAgent() ?? 'unknown';
+    const userAgent = getLinking().getUserAgent() ?? "unknown";
     const { data: user, error: userError } = await this.getUser();
     if (userError) {
       return { error: userError, data: null };
@@ -378,8 +379,6 @@ export class Web3NonCustodialProvider {
     } catch (e) {}
 
     await this.pushDevice({
-
-
       deviceId: result.deviceId,
       encryptedDeviceShard,
       walletId: result.walletId,
@@ -459,7 +458,7 @@ export class Web3NonCustodialProvider {
       newDeviceShardEncryptionKey,
     );
 
-    const userAgent = getLinking().getUserAgent() ?? 'unknown';
+    const userAgent = getLinking().getUserAgent() ?? "unknown";
 
     const createDeviceBody: CreateDeviceBody = {
       walletId,
@@ -563,7 +562,9 @@ export class Web3NonCustodialProvider {
       return;
     } else if (provider === "email") {
       // Email uses OTP flow, not OAuth - this method should not be called for email
-      throw new Error("Email provider uses OTP flow. Use the email OTP API endpoints instead.");
+      throw new Error(
+        "Email provider uses OTP flow. Use the email OTP API endpoints instead.",
+      );
     }
   }
 
@@ -645,43 +646,30 @@ export class Web3NonCustodialProvider {
   }
 
   /**
-   * Initiates FC Barcelona Identity (passwordless OAuth 2.0) login.
+   * Initiates FC Barcelona Identity (OAuth 2.0) login.
    *
-   * FCB uses a two-step flow that differs from standard OAuth providers:
-   *   1. Your server calls FCB's init endpoint to create a passwordless session
-   *      and trigger the OTP / magic-link email to the user.
-   *   2. The browser is redirected to FCB's authorize page where the user
-   *      enters the OTP or clicks the magic link.
-   *   3. FCB redirects back to your app's /api/auth callback with a code,
-   *      which completes the token exchange automatically.
+   * Builds the FCB authorize URL via POST /api/auth/fcb, then redirects the
+   * browser to FCB's hosted login page (email + OTP handled by FCB).
    *
    * @example
    * const { error } = await provider.signInWithFcb(
-   *   { email: "fan@example.com", redirectUrl: window.location.origin + "/auth/callback" },
+   *   { redirectUrl: window.location.origin + "/auth/callback" },
    *   (authorizeUrl) => { window.location.href = authorizeUrl; },
    * );
    * if (error) console.error(error.message);
    *
-   * @param params.email       - The user's FC Barcelona account email address.
-   * @param params.redirectUrl - Where to send the user after FCB authentication
-   *                             completes (must be within your whitelisted origins).
-   * @param params.mode        - "login" (default) or "register" for new FCB accounts.
-   * @param params.firstName   - Required when mode is "register".
-   * @param params.lastName    - Required when mode is "register".
-   * @param callback           - Receives the FCB authorize URL. Redirect the user to it.
-   * @returns                  - { error: null } on success, { error: Error } on failure.
+   * @param params.redirectUrl - Post-auth redirect (must be a whitelisted origin).
+   * @param params.newSession  - Clear any existing FCB session before login.
+   * @param callback           - Receives the FCB authorize URL to redirect to.
    */
   async signInWithFcb(
     params: {
-      email: string;
       redirectUrl: string;
-      mode?: "login" | "register";
-      firstName?: string;
-      lastName?: string;
+      newSession?: boolean;
     },
     callback: (authorizeUrl: string) => void,
   ): Promise<{ error: Error | null }> {
-    const { email, redirectUrl, mode = "login", firstName, lastName } = params;
+    const { redirectUrl, newSession } = params;
 
     const state = this.base64Encode(
       JSON.stringify({
@@ -691,22 +679,18 @@ export class Web3NonCustodialProvider {
       }),
     );
 
-    const body =
-      mode === "register"
-        ? { type: "register", email, firstName, lastName, state }
-        : { type: "login", email, state };
-
-    const res = await fetch(this.appOrigin + "/api/auth/fcb/init", {
+    const res = await fetch(this.appOrigin + "/api/auth/fcb", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
+      body: JSON.stringify({ state, newSession }),
     });
 
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
       return {
         error: new Error(
-          (data as { error?: string }).error ?? `FCB init failed (HTTP ${res.status})`,
+          (data as { error?: string }).error ??
+            `FCB authorize failed (HTTP ${res.status})`,
         ),
       };
     }
