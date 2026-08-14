@@ -565,6 +565,10 @@ export class Web3NonCustodialProvider {
       throw new Error(
         "Email provider uses OTP flow. Use the email OTP API endpoints instead.",
       );
+    } else if (provider === "fcb") {
+      throw new Error(
+        "FCB provider uses signInWithFcb(). Pass redirectUrl and optional newSession.",
+      );
     }
   }
 
@@ -645,31 +649,14 @@ export class Web3NonCustodialProvider {
     return this.getUser();
   }
 
-  /**
-   * Initiates FC Barcelona Identity (OAuth 2.0) login.
-   *
-   * Builds the FCB authorize URL via POST /api/auth/fcb, then redirects the
-   * browser to FCB's hosted login page (email + OTP handled by FCB).
-   *
-   * @example
-   * const { error } = await provider.signInWithFcb(
-   *   { redirectUrl: window.location.origin + "/auth/callback" },
-   *   (authorizeUrl) => { window.location.href = authorizeUrl; },
-   * );
-   * if (error) console.error(error.message);
-   *
-   * @param params.redirectUrl - Post-auth redirect (must be a whitelisted origin).
-   * @param params.newSession  - Clear any existing FCB session before login.
-   * @param callback           - Receives the FCB authorize URL to redirect to.
-   */
   async signInWithFcb(
     params: {
       redirectUrl: string;
       newSession?: boolean;
     },
-    callback: (authorizeUrl: string) => void,
+    callback: (authorizeUrl: string, logoutUrl?: string) => void,
   ): Promise<{ error: Error | null }> {
-    const { redirectUrl, newSession } = params;
+    const { redirectUrl, newSession = false } = params;
 
     const state = this.base64Encode(
       JSON.stringify({
@@ -695,8 +682,11 @@ export class Web3NonCustodialProvider {
       };
     }
 
-    const { authorizeUrl } = (await res.json()) as { authorizeUrl: string };
-    callback(authorizeUrl);
+    const json = (await res.json()) as {
+      authorizeUrl: string;
+      logoutUrl?: string;
+    };
+    callback(json.authorizeUrl, json.logoutUrl);
     return { error: null };
   }
 

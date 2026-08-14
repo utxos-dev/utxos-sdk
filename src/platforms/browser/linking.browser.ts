@@ -3,14 +3,21 @@
  * Handles URL opening, OAuth popups, and URL parsing for browsers
  */
 
-import type { LinkingAdapter, AuthCallbackResult } from '../../adapters/types';
+import type { LinkingAdapter, AuthCallbackResult } from "../../adapters/types";
 
 /**
  * Calculate centered popup position relative to current window
  */
-function calculatePopupPosition(width: number, height: number): { left: number; top: number } {
-  const screenWidth = window.innerWidth || document.documentElement.clientWidth || screen.width;
-  const screenHeight = window.innerHeight || document.documentElement.clientHeight || screen.height;
+function calculatePopupPosition(
+  width: number,
+  height: number,
+): { left: number; top: number } {
+  const screenWidth =
+    window.innerWidth || document.documentElement.clientWidth || screen.width;
+  const screenHeight =
+    window.innerHeight ||
+    document.documentElement.clientHeight ||
+    screen.height;
 
   // Account for window position on multi-monitor setups
   const windowLeft = window.screenX || window.screenLeft || 0;
@@ -21,7 +28,7 @@ function calculatePopupPosition(width: number, height: number): { left: number; 
 
   return {
     left: Math.max(0, left),
-    top: Math.max(0, top)
+    top: Math.max(0, top),
   };
 }
 
@@ -56,7 +63,7 @@ export const linkingAdapter: LinkingAdapter = {
    * Open URL in new browser tab
    */
   async openURL(url: string): Promise<void> {
-    window.open(url, '_blank', 'noopener,noreferrer');
+    window.open(url, "_blank", "noopener,noreferrer");
   },
 
   /**
@@ -71,16 +78,31 @@ export const linkingAdapter: LinkingAdapter = {
    * Open OAuth popup window and wait for callback via postMessage
    * Handles popup blocked, user close, and message events
    */
-  async openAuthWindow(url: string, callbackScheme: string): Promise<AuthCallbackResult> {
+  async openAuthWindow(
+    url: string,
+    callbackScheme: string,
+  ): Promise<AuthCallbackResult> {
     return new Promise((resolve, reject) => {
       const width = 448;
       const height = 668;
       const features = buildWindowFeatures(width, height);
 
-      const popup = window.open(url, 'utxos', features);
+      const handleOriginRequest = (e: MessageEvent) => {
+        if (e.data?.type === "utxos_request_origin" && e.source) {
+          try {
+            (e.source as Window).postMessage(
+              { type: "utxos_origin_response", target: "utxos" },
+              "*",
+            );
+          } catch {}
+        }
+      };
+      window.addEventListener("message", handleOriginRequest);
+
+      const popup = window.open(url, "utxos", features);
 
       if (!popup) {
-        reject(new Error('Popup blocked. Please allow popups for this site.'));
+        reject(new Error("Popup blocked. Please allow popups for this site."));
         return;
       }
 
@@ -92,7 +114,8 @@ export const linkingAdapter: LinkingAdapter = {
           clearInterval(pollTimer);
           pollTimer = null;
         }
-        window.removeEventListener('message', handleMessage);
+        window.removeEventListener("message", handleMessage);
+        window.removeEventListener("message", handleOriginRequest);
       };
 
       const resolveOnce = (result: AuthCallbackResult) => {
@@ -103,39 +126,40 @@ export const linkingAdapter: LinkingAdapter = {
       };
 
       const handleMessage = (event: MessageEvent) => {
-        // Verify message is from our auth flow
-        if (!event.data || typeof event.data !== 'object') {
+        if (!event.data || typeof event.data !== "object") {
           return;
         }
 
-        const { code, state, error, error_description, target } = event.data;
+        if (event.data.target !== "utxos") {
+          return;
+        }
 
-        // Check for utxos-specific target or OAuth params
-        if (target === 'utxos' || code || error) {
+        try {
           if (!popup.closed) {
             popup.close();
           }
-          resolveOnce({
-            code,
-            state,
-            error,
-            errorDescription: error_description,
-            // Include full message data for wallet-specific payloads
-            data: event.data,
-          });
-        }
+        } catch {}
+
+        resolveOnce({
+          code: event.data.code,
+          state: event.data.state,
+          error: event.data.error,
+          errorDescription: event.data.error_description,
+          data: event.data,
+        });
       };
 
-      window.addEventListener('message', handleMessage);
+      window.addEventListener("message", handleMessage);
 
-      // Poll for popup close (user manually closed)
       pollTimer = setInterval(() => {
-        if (popup.closed) {
-          resolveOnce({
-            error: 'cancelled',
-            errorDescription: 'User closed the popup'
-          });
-        }
+        try {
+          if (popup.closed) {
+            resolveOnce({
+              error: "cancelled",
+              errorDescription: "User closed the popup",
+            });
+          }
+        } catch {}
       }, 500);
     });
   },
@@ -144,7 +168,7 @@ export const linkingAdapter: LinkingAdapter = {
    * Get current page URL
    */
   getCurrentURL(): string | null {
-    if (typeof window === 'undefined') return null;
+    if (typeof window === "undefined") return null;
     return window.location.href;
   },
 
@@ -152,7 +176,7 @@ export const linkingAdapter: LinkingAdapter = {
    * Parse URL query parameters from current page
    */
   getURLParams(): Record<string, string> {
-    if (typeof window === 'undefined') return {};
+    if (typeof window === "undefined") return {};
 
     const params = new URLSearchParams(window.location.search);
     const result: Record<string, string> = {};
@@ -177,23 +201,23 @@ export const linkingAdapter: LinkingAdapter = {
    * Returns cleanup function to remove listener
    */
   addURLListener(callback: (url: string) => void): () => void {
-    if (typeof window === 'undefined') {
+    if (typeof window === "undefined") {
       return () => {};
     }
 
     const handler = () => callback(window.location.href);
 
-    window.addEventListener('popstate', handler);
-    window.addEventListener('hashchange', handler);
+    window.addEventListener("popstate", handler);
+    window.addEventListener("hashchange", handler);
 
     return () => {
-      window.removeEventListener('popstate', handler);
-      window.removeEventListener('hashchange', handler);
+      window.removeEventListener("popstate", handler);
+      window.removeEventListener("hashchange", handler);
     };
   },
 
   getUserAgent(): string | null {
-    if (typeof navigator === 'undefined') return null;
+    if (typeof navigator === "undefined") return null;
     return navigator.userAgent;
   },
 };

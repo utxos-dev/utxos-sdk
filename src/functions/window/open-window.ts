@@ -17,8 +17,20 @@ export async function openWindow(
   params: OpenWindowParams,
   appUrl: string = "https://utxos.dev/",
 ): Promise<any> {
-  // Build the wallet URL with query parameters
-  const p = new URLSearchParams(params as Record<string, string>);
+  const p = new URLSearchParams();
+  for (const [key, value] of Object.entries(params as Record<string, string>)) {
+    if (
+      value != null &&
+      value !== "" &&
+      value !== "undefined" &&
+      value !== "null"
+    ) {
+      p.set(key, value);
+    }
+  }
+  if (typeof window !== "undefined" && window.location?.origin) {
+    p.set("origin", window.location.origin);
+  }
   const url = `${appUrl}/client/wallet?${p.toString()}`;
 
   // Delegate to platform-specific linking adapter
@@ -33,7 +45,7 @@ export async function openWindow(
   if (result.error) {
     return {
       success: false,
-      message: result.errorDescription || result.error
+      message: result.errorDescription || result.error,
     };
   }
 

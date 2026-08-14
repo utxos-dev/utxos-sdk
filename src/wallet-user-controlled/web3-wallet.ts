@@ -104,11 +104,16 @@ export class Web3Wallet {
       options.appUrl,
     );
 
-    if (res.success === false)
+    if (res.success === false) {
+      const detail =
+        typeof (res as { message?: string }).message === "string"
+          ? (res as { message: string }).message
+          : "The request was refused due to lack of access therefore wallet disconnects.";
       throw new ApiError({
         code: -3,
-        info: "Refused - The request was refused due to lack of access - e.g. wallet disconnects.",
+        info: `Refused ${detail}`,
       });
+    }
 
     if (res.data.method !== "enable") {
       throw new ApiError({
