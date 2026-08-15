@@ -8,8 +8,11 @@ import {
 import axios from "axios";
 import { trackPlatformMetric } from "../internal/metrics";
 
-
-import { getStorage, getLinking, getEncoding } from "../internal/platform-context";
+import {
+  getStorage,
+  getLinking,
+  getEncoding,
+} from "../internal/platform-context";
 
 export * from "./utils";
 
@@ -190,9 +193,7 @@ export class Web3NonCustodialProvider {
 
   constructor(params: Web3NonCustodialProviderParams) {
     if (params.appleOauth2ClientId) {
-      throw new Error(
-        "Apple Sign no longer supported in SDK.",
-      );
+      throw new Error("Apple Sign no longer supported in SDK.");
     }
     this.projectId = params.projectId;
     this.appOrigin = params.appOrigin ? params.appOrigin : "https://utxos.dev";
@@ -211,7 +212,7 @@ export class Web3NonCustodialProvider {
 
   private base64Decode(base64: string): string {
     const encoding = getEncoding();
-    const normalized = base64.replace(/-/g, '+').replace(/_/g, '/');
+    const normalized = base64.replace(/-/g, "+").replace(/_/g, "/");
     return encoding.bytesToUtf8(encoding.base64ToBytes(normalized));
   }
 
@@ -316,7 +317,7 @@ export class Web3NonCustodialProvider {
       }
     | { error: null; data: { deviceId: string; walletId: string } }
   > {
-    const userAgent = getLinking().getUserAgent() ?? 'unknown';
+    const userAgent = getLinking().getUserAgent() ?? "unknown";
     const { data: user, error: userError } = await this.getUser();
     if (userError) {
       return { error: userError, data: null };
@@ -378,8 +379,6 @@ export class Web3NonCustodialProvider {
     } catch (e) {}
 
     await this.pushDevice({
-
-
       deviceId: result.deviceId,
       encryptedDeviceShard,
       walletId: result.walletId,
@@ -459,7 +458,7 @@ export class Web3NonCustodialProvider {
       newDeviceShardEncryptionKey,
     );
 
-    const userAgent = getLinking().getUserAgent() ?? 'unknown';
+    const userAgent = getLinking().getUserAgent() ?? "unknown";
 
     const createDeviceBody: CreateDeviceBody = {
       walletId,
@@ -563,7 +562,13 @@ export class Web3NonCustodialProvider {
       return;
     } else if (provider === "email") {
       // Email uses OTP flow, not OAuth - this method should not be called for email
-      throw new Error("Email provider uses OTP flow. Use the email OTP API endpoints instead.");
+      throw new Error(
+        "Email provider uses OTP flow. Use the email OTP API endpoints instead.",
+      );
+    } else if (provider === "fcb") {
+      throw new Error(
+        "FCB provider uses signInWithFcb(). Pass redirectUrl and optional newSession.",
+      );
     }
   }
 
@@ -642,6 +647,47 @@ export class Web3NonCustodialProvider {
 
     // Return user data same way as getUser()
     return this.getUser();
+  }
+
+  async signInWithFcb(
+    params: {
+      redirectUrl: string;
+      newSession?: boolean;
+    },
+    callback: (authorizeUrl: string, logoutUrl?: string) => void,
+  ): Promise<{ error: Error | null }> {
+    const { redirectUrl, newSession = false } = params;
+
+    const state = this.base64Encode(
+      JSON.stringify({
+        redirect: redirectUrl,
+        provider: "fcb",
+        projectId: this.projectId,
+      }),
+    );
+
+    const res = await fetch(this.appOrigin + "/api/auth/fcb", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ state, newSession }),
+    });
+
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      return {
+        error: new Error(
+          (data as { error?: string }).error ??
+            `FCB authorize failed (HTTP ${res.status})`,
+        ),
+      };
+    }
+
+    const json = (await res.json()) as {
+      authorizeUrl: string;
+      logoutUrl?: string;
+    };
+    callback(json.authorizeUrl, json.logoutUrl);
+    return { error: null };
   }
 
   private async putInStorage<ObjectType extends object>(

@@ -1,5 +1,3 @@
-import { UTxO } from "@meshsdk/common";
-
 export type Web3Project = {
   id: string;
   name: string;
@@ -30,6 +28,7 @@ export type Web3ProjectBranding = {
    */
   appleEnabled?: boolean;
   emailEnabled?: boolean;
+  fcbEnabled?: boolean;
 };
 
 export type Web3ProjectWallet = {
@@ -62,7 +61,7 @@ export type Web3JWTBody = {
   username: string | null;
 };
 
-export type Web3AuthProvider = "google" | "discord" | "twitter" | "email";
+export type Web3AuthProvider = "google" | "discord" | "twitter" | "email" | "fcb";
 
 /** Role a user can have within a project */
 export type Web3ProjectRole = "owner" | "admin" | "developer" | "billing";
