@@ -107,11 +107,6 @@ export type Web3NonCustodialProviderParams = {
   googleOauth2ClientId: string;
   twitterOauth2ClientId: string;
   discordOauth2ClientId: string;
-  /**
-   * @deprecated Apple Sign In was removed. Omit this field. If a non-empty value is passed,
-   * the constructor throws so misconfiguration is visible immediately instead of failing later.
-   */
-  appleOauth2ClientId?: string;
 };
 
 export type Web3NonCustodialProviderUser = {
@@ -192,9 +187,6 @@ export class Web3NonCustodialProvider {
   discordOauth2ClientId: string;
 
   constructor(params: Web3NonCustodialProviderParams) {
-    if (params.appleOauth2ClientId) {
-      throw new Error("Apple Sign no longer supported in SDK.");
-    }
     this.projectId = params.projectId;
     this.appOrigin = params.appOrigin ? params.appOrigin : "https://utxos.dev";
     this.storageLocation = params.storageLocation
@@ -498,11 +490,6 @@ export class Web3NonCustodialProvider {
     redirectUrl: string,
     callback: (authorizationUrl: string) => void,
   ) {
-    if ((provider as string) === "apple") {
-      throw new Error(
-        "Apple Sign In was removed. Use google, discord, twitter, or email.",
-      );
-    }
     if (provider === "google") {
       const googleState = JSON.stringify({
         redirect: redirectUrl,
