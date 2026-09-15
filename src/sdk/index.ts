@@ -5,7 +5,6 @@ import { IFetcher, ISubmitter } from "@meshsdk/common";
 import { Sponsorship } from "./sponsorship";
 import { SponsorshipV2 } from "./sponsorship/v2";
 import { Tokenization } from "./tokenization";
-import { CardanoProgrammableTokens } from "./programmable-tokens";
 import { trackPlatformMetric } from "../internal/metrics";
 
 
@@ -100,7 +99,6 @@ export class Web3Sdk {
   sponsorship: Sponsorship;
   sponsorshipV2: SponsorshipV2;
   tokenization: Tokenization;
-  programmableTokens: CardanoProgrammableTokens;
 
   constructor({
     appUrl,
@@ -145,9 +143,6 @@ export class Web3Sdk {
     this.tokenization = new Tokenization({
       sdk: this,
     });
-    this.programmableTokens = new CardanoProgrammableTokens({
-      sdk: this,
-    });
   }
 
   async getProject() {
@@ -174,4 +169,3 @@ export class Web3Sdk {
 export * from "./sponsorship";
 export * from "./sponsorship/v2";
 export * from "./wallet-developer-controlled";
-export * from "./programmable-tokens";
