@@ -3,6 +3,7 @@ import { WalletDeveloperControlled } from "./wallet-developer-controlled/";
 import { Web3Project } from "../types";
 import { IFetcher, ISubmitter } from "@meshsdk/common";
 import { Sponsorship } from "./sponsorship";
+import { SponsorshipV2 } from "./sponsorship/v2";
 import { Tokenization } from "./tokenization";
 import { trackPlatformMetric } from "../internal/metrics";
 
@@ -96,6 +97,7 @@ export class Web3Sdk {
   project: Web3Project | undefined;
   wallet: WalletDeveloperControlled;
   sponsorship: Sponsorship;
+  sponsorshipV2: SponsorshipV2;
   tokenization: Tokenization;
 
   constructor({
@@ -135,6 +137,9 @@ export class Web3Sdk {
     this.sponsorship = new Sponsorship({
       sdk: this,
     });
+    this.sponsorshipV2 = new SponsorshipV2({
+      sdk: this,
+    });
     this.tokenization = new Tokenization({
       sdk: this,
     });
@@ -162,4 +167,5 @@ export class Web3Sdk {
 }
 
 export * from "./sponsorship";
+export * from "./sponsorship/v2";
 export * from "./wallet-developer-controlled";
