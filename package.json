@@ -41,7 +41,8 @@
   "react-native": "./dist/index.native.js",
   "browser": "./dist/index.js",
   "files": [
-    "dist/**"
+    "dist/**",
+    "src/configs/**"
   ],
   "scripts": {
     "build:sdk": "tsup",
@@ -71,6 +72,9 @@
     "axios": "^1.8.3",
     "base32-encoding": "^1.0.0",
     "uuid": "^11.1.0"
+  },
+  "overrides": {
+    "npm": "file:stubs/npm"
   },
   "peerDependencies": {
     "react-native-quick-crypto": ">=0.7.0",
