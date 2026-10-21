@@ -29,6 +29,11 @@
         "require": "./dist/index.cjs"
       }
     },
+    "./non-custodial": {
+      "types": "./dist/non-custodial-entry.d.ts",
+      "import": "./dist/non-custodial-entry.js",
+      "require": "./dist/non-custodial-entry.cjs"
+    },
     "./eslint/base": "./src/configs/eslint/base.js",
     "./eslint/next.js": "./src/configs/eslint/next.js",
     "./eslint/react-internal": "./src/configs/eslint/react-internal.js",
