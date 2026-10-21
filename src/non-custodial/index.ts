@@ -1,10 +1,8 @@
-import {
-  clientGenerateWallet,
-  clientRecovery,
+import type {
   Web3JWTBody,
   Web3WalletObject,
   Web3AuthProvider,
-} from "../";
+} from "../types";
 import axios from "axios";
 import { trackPlatformMetric } from "../internal/metrics";
 
@@ -15,6 +13,22 @@ import {
 } from "../internal/platform-context";
 
 export * from "./utils";
+
+/**
+ * Wallet generation and recovery pull in the Cardano, Bitcoin and Spark SDKs
+ * (several MB). They are loaded on first use so that apps which only sign users
+ * in (or check a session) never download them. Call `preloadWalletCrypto()` when
+ * the user is about to create or recover a wallet to hide the download behind
+ * the form.
+ */
+const loadGenerateWallet = () => import("../functions/client/generate-wallet");
+const loadRecovery = () => import("../functions/client/recovery");
+
+export function preloadWalletCrypto(): void {
+  void loadGenerateWallet().catch(() => {});
+  void loadRecovery().catch(() => {});
+}
+
 
 const AUTH_KEY = "mesh-web3-services-auth";
 type AuthJwtLocationObject = {
@@ -327,7 +341,9 @@ export class Web3NonCustodialProvider {
       sparkRegtestPubKeyHash,
       sparkMainnetStaticDepositAddress,
       sparkRegtestStaticDepositAddress,
-    } = await clientGenerateWallet(
+    } = await (
+      await loadGenerateWallet()
+    ).clientGenerateWallet(
       deviceShardEncryptionKey,
       recoveryShardEncryptionKey,
     );
@@ -443,6 +459,7 @@ export class Web3NonCustodialProvider {
     }
     const wallet = (await res.json()) as GetWalletBody;
 
+    const { clientRecovery } = await loadRecovery();
     const { authShard, deviceShard, fullKey } = await clientRecovery(
       wallet.authShard,
       wallet.recoveryShard,

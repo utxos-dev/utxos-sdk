@@ -1,7 +1,11 @@
 import { defineConfig } from 'tsup';
 
 export default defineConfig({
-  entry: ['src/index.ts', 'src/index.native.ts'],
+  entry: [
+    'src/index.ts',
+    'src/index.native.ts',
+    'src/non-custodial-entry.ts',
+  ],
   format: ['esm', 'cjs'],
   dts: true,
   external: [
