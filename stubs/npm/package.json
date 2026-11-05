@@ -1,0 +1,7 @@
+{
+  "name": "npm",
+  "version": "11.11.0-stub",
+  "description": "Stubbed npm package to satisfy @cardano-sdk dependencies without pulling vulnerable npm CLI tree.",
+  "main": "index.js",
+  "license": "MIT"
+}

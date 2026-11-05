@@ -89,6 +89,11 @@ Check [https://docs.utxos.dev/sponsor](https://docs.utxos.dev/sponsor) for more 
 - **Cardano**: Mainnet (Preview, Preprod, Mainnet)
 - **Spark**: Mainnet and Regtest
 
+## Repository notes (local changes)
+
+- Config presets are now published with the package (`src/configs/**` is included in `package.json:files`) so consumers can import the ESLint/TypeScript/Prettier configs directly.
+- Security hardening: `package.json` overrides point `npm` to a minimal stub in `stubs/npm`. This removes the vulnerable bundled npm CLI pulled in by `@cardano-sdk/*` dependencies while leaving runtime behavior unchanged. If you need the real npm CLI for tooling inside those packages, delete the override and rerun `npm install` (audit warnings will return).
+
 ## Links
 
 - [Documentation](https://docs.utxos.dev/)
