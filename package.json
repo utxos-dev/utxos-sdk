@@ -34,6 +34,11 @@
       "import": "./dist/non-custodial-entry.js",
       "require": "./dist/non-custodial-entry.cjs"
     },
+    "./redirect-uri": {
+      "types": "./dist/redirect-uri-entry.d.ts",
+      "import": "./dist/redirect-uri-entry.js",
+      "require": "./dist/redirect-uri-entry.cjs"
+    },
     "./eslint/base": "./src/configs/eslint/base.js",
     "./eslint/next.js": "./src/configs/eslint/next.js",
     "./eslint/react-internal": "./src/configs/eslint/react-internal.js",

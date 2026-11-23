@@ -5,6 +5,7 @@ export default defineConfig({
     'src/index.ts',
     'src/index.native.ts',
     'src/non-custodial-entry.ts',
+    'src/redirect-uri-entry.ts',
   ],
   format: ['esm', 'cjs'],
   dts: true,
