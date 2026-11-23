@@ -80,8 +80,16 @@ export const linkingAdapter: LinkingAdapter = {
    */
   async openAuthWindow(
     url: string,
-    callbackScheme: string,
+    _redirectUri?: string,
   ): Promise<AuthCallbackResult> {
+    // Only accept results from the wallet window we opened, on the wallet origin.
+    let walletOrigin: string | null = null;
+    try {
+      walletOrigin = new URL(url).origin;
+    } catch {
+      walletOrigin = null;
+    }
+
     return new Promise((resolve, reject) => {
       const width = 448;
       const height = 668;
@@ -126,6 +134,16 @@ export const linkingAdapter: LinkingAdapter = {
       };
 
       const handleMessage = (event: MessageEvent) => {
+        // Ignore messages from any window other than the wallet popup, or from
+        // any origin other than the wallet's. Without this, any page able to get
+        // a reference to this window could forge a wallet response.
+        if (event.source !== popup) {
+          return;
+        }
+        if (walletOrigin !== null && event.origin !== walletOrigin) {
+          return;
+        }
+
         if (!event.data || typeof event.data !== "object") {
           return;
         }

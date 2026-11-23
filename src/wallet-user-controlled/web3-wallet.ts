@@ -32,6 +32,13 @@ export type EnableWeb3WalletOptions = {
   keepWindowOpen?: boolean;
   baseUrl?: string;
   sparkscanApiKey?: string;
+  /**
+   * React Native: the app link the wallet returns to after sign-in and signing,
+   * e.g. `atlas://wallet` or an https universal link. Required on React Native.
+   * Must be registered in your app and whitelisted in the UTXOS dashboard.
+   * Ignored in browsers.
+   */
+  redirectUri?: string;
 };
 
 type Web3WalletContructorOptions = {
@@ -42,6 +49,7 @@ type Web3WalletContructorOptions = {
   projectId?: string;
   appUrl?: string;
   user?: UserSocialData;
+  redirectUri?: string;
   cardano: MeshCardanoHeadlessWallet;
   bitcoin: EmbeddedWallet;
   spark: Web3SparkWallet;
@@ -60,6 +68,8 @@ export class Web3Wallet {
   projectId?: string;
   appUrl: string = "https://utxos.dev/";
   user?: UserSocialData;
+  /** App link the wallet returns to (React Native). */
+  redirectUri?: string;
   cardano: MeshCardanoHeadlessWallet;
   bitcoin: EmbeddedWallet;
   spark: Web3SparkWallet;
@@ -69,6 +79,7 @@ export class Web3Wallet {
     this.projectId = options.projectId;
     this.appUrl = options.appUrl || "https://utxos.dev/";
     this.user = options.user;
+    this.redirectUri = options.redirectUri;
     this.cardano = options.cardano;
     this.bitcoin = options.bitcoin;
     this.spark = options.spark;
@@ -88,6 +99,7 @@ export class Web3Wallet {
    * @param options.refreshToken - An optional refresh token for authentication.
    * @param options.keepWindowOpen - An optional flag to keep the wallet window open after operations.
    * @param options.sparkscanApiKey - An optional API key for Sparkscan integration.
+   * @param options.redirectUri - React Native only: app link the wallet returns to (e.g. `atlas://wallet`).
    *
    * @returns A promise that resolves to an instance of Web3Wallet.
    */
@@ -102,6 +114,7 @@ export class Web3Wallet {
         networkId: String(options.networkId),
       },
       options.appUrl,
+      { redirectUri: options.redirectUri },
     );
 
     if (res.success === false) {
@@ -130,6 +143,7 @@ export class Web3Wallet {
       bitcoinProvider: options.bitcoinProvider,
       projectId: options.projectId,
       appUrl: options.appUrl,
+      redirectUri: options.redirectUri,
       user: res.data.user,
       keyHashes: {
         cardanoPubKeyHash: res.data.cardanoPubKeyHash,
@@ -166,6 +180,7 @@ export class Web3Wallet {
         networkId: String(this.networkId),
       },
       this.appUrl,
+      { redirectUri: this.redirectUri },
     );
 
     if (res.success === false)
@@ -191,6 +206,7 @@ export class Web3Wallet {
         projectId: this.projectId!,
       },
       this.appUrl,
+      { redirectUri: this.redirectUri },
     );
     if (res.success === false) {
       throw new ApiError({
@@ -217,6 +233,7 @@ export class Web3Wallet {
         projectId: this.projectId,
       },
       this.appUrl,
+      { redirectUri: this.redirectUri },
     );
 
     if (res.success === false)
@@ -240,6 +257,7 @@ export class Web3Wallet {
   static async initBitcoinWallet(options: {
     projectId: string;
     appUrl: string;
+    redirectUri?: string;
     networkId: 0 | 1;
     bitcoinProvider?: IBitcoinProvider;
     keyHashes: Web3WalletKeyHashes;
@@ -269,6 +287,7 @@ export class Web3Wallet {
           networkId: String(options.networkId),
         },
         options.appUrl,
+        { redirectUri: options.redirectUri },
       );
 
       if (res.success === false)
@@ -300,6 +319,7 @@ export class Web3Wallet {
           networkId: String(options.networkId),
         },
         options.appUrl,
+        { redirectUri: options.redirectUri },
       );
 
       if (res.success === false)
@@ -329,6 +349,7 @@ export class Web3Wallet {
           networkId: String(options.networkId),
         },
         options.appUrl,
+        { redirectUri: options.redirectUri },
       );
 
       if (res.success === false)
@@ -356,6 +377,7 @@ export class Web3Wallet {
   static async initCardanoWallet(options: {
     projectId: string;
     appUrl: string;
+    redirectUri?: string;
     networkId: 0 | 1;
     fetcher: IFetcher | undefined;
     submitter: ISubmitter | undefined;
@@ -405,6 +427,7 @@ export class Web3Wallet {
           networkId: String(options.networkId),
         },
         options.appUrl,
+        { redirectUri: options.redirectUri },
       );
 
       if (res.success === false)
@@ -437,6 +460,7 @@ export class Web3Wallet {
           networkId: String(options.networkId),
         },
         options.appUrl,
+        { redirectUri: options.redirectUri },
       );
 
       if (res.success === false)
@@ -465,6 +489,7 @@ export class Web3Wallet {
           networkId: String(options.networkId),
         },
         options.appUrl,
+        { redirectUri: options.redirectUri },
       );
 
       if (res.success === false)
@@ -495,6 +520,7 @@ export class Web3Wallet {
     sparkRegtestStaticDepositAddress: string,
     sparkscanApiKey?: string,
     baseUrl = "https://api.sparkscan.io",
+    redirectUri?: string,
   ): Promise<Web3SparkWallet> {
     const identityPublicKey =
       networkId === 1
@@ -505,6 +531,7 @@ export class Web3Wallet {
       networkId,
       projectId,
       appUrl,
+      redirectUri,
       sparkApiKey: sparkscanApiKey,
       sparkApiUrl: baseUrl,
       sparkMainnetStaticDepositAddress: sparkMainnetStaticDepositAddress,
@@ -541,6 +568,7 @@ export class Web3Wallet {
     bitcoinProvider,
     projectId,
     appUrl = "https://utxos.dev/",
+    redirectUri,
     user,
     keyHashes,
     baseUrl,
@@ -554,6 +582,7 @@ export class Web3Wallet {
     bitcoinProvider?: IBitcoinProvider;
     projectId: string;
     appUrl?: string;
+    redirectUri?: string;
     user?: UserSocialData;
     keyHashes: Web3WalletKeyHashes;
     sparkMainnetStaticDepositAddress: string;
@@ -564,6 +593,7 @@ export class Web3Wallet {
     const bitcoin = await this.initBitcoinWallet({
       projectId,
       appUrl,
+      redirectUri,
       networkId,
       bitcoinProvider,
       keyHashes,
@@ -572,6 +602,7 @@ export class Web3Wallet {
     const cardano = await this.initCardanoWallet({
       projectId,
       appUrl,
+      redirectUri,
       networkId,
       fetcher,
       submitter,
@@ -587,6 +618,7 @@ export class Web3Wallet {
       sparkRegtestStaticDepositAddress,
       sparkscanApiKey,
       baseUrl,
+      redirectUri,
     );
 
     const _options: Web3WalletContructorOptions = {
@@ -594,6 +626,7 @@ export class Web3Wallet {
       fetcher: fetcher,
       submitter: submitter,
       appUrl: appUrl,
+      redirectUri: redirectUri,
       projectId: projectId,
       user: user,
       cardano,

@@ -136,13 +136,25 @@ export interface LinkingAdapter {
   redirectURL(url: string): Promise<void>;
 
   /**
+   * `true` when this platform returns from the wallet through a redirect
+   * (deep link / universal link) instead of a popup + `postMessage`.
+   * React Native: true. Browser: false.
+   */
+  readonly supportsRedirectCallback?: boolean;
+
+  /**
    * Open OAuth/auth window and wait for callback
    * Handles popup window lifecycle and callback URL parsing
    * @param url - Authorization URL to open
-   * @param callbackScheme - Expected callback URL scheme (e.g., 'myapp://')
+   * @param redirectUri - Expected callback URL (e.g., 'myapp://wallet'). Ignored by popup-based platforms.
+   * @param options - Optional hardening parameters for redirect-based platforms
    * @returns Promise resolving to parsed callback parameters
    */
-  openAuthWindow(url: string, callbackScheme: string): Promise<AuthCallbackResult>;
+  openAuthWindow(
+    url: string,
+    redirectUri: string,
+    options?: OpenAuthWindowOptions,
+  ): Promise<AuthCallbackResult>;
 
   /**
    * Get current URL (browser only)
@@ -171,6 +183,19 @@ export interface LinkingAdapter {
    * @returns User agent string or null if not available
    */
   getUserAgent(): string | null;
+}
+
+/**
+ * Options for {@link LinkingAdapter.openAuthWindow}
+ */
+export interface OpenAuthWindowOptions {
+  /**
+   * Expected `state` value. Callbacks carrying a different `state` are ignored
+   * (so a stray or malicious deep link cannot complete or cancel the flow).
+   */
+  state?: string;
+  /** Give up waiting for the callback after this many milliseconds. */
+  timeoutMs?: number;
 }
 
 /**

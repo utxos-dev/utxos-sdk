@@ -56,6 +56,12 @@ export default function App() {
         directTo: provider,
 
         appUrl: 'http://localhost:3000',
+
+        // The wallet runs in the system browser (Google blocks WebViews) and
+        // returns here through this app link. It must match the `scheme` in
+        // app.json and be added to the project's whitelisted URLs in the
+        // UTXOS dashboard.
+        redirectUri: 'utxos-rn-example://wallet',
       };
 
       const web3Wallet = await Web3Wallet.enable(options);

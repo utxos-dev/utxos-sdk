@@ -42,6 +42,39 @@ const sparkWallet = wallet.spark;
 
 Check [https://docs.utxos.dev/wallet](https://docs.utxos.dev/wallet) for more details.
 
+#### React Native (Google, Discord, X sign-in)
+
+Google refuses sign-in inside embedded WebViews, so on React Native the wallet opens in the
+**system browser** (ASWebAuthenticationSession / Chrome Custom Tabs) and returns to your app
+through an app link. Pass the link as `redirectUri`:
+
+```typescript
+const wallet = await Web3Wallet.enable({
+  networkId: 1,
+  projectId: 'your-project-id',
+  directTo: 'google',
+  redirectUri: 'myapp://wallet', // or an https universal / app link
+});
+// The same redirectUri is reused for every later signing request on `wallet`.
+```
+
+Setup checklist:
+
+1. Register the scheme in your app (Expo: `"scheme": "myapp"` in `app.json`; bare RN: iOS URL
+   Types + an Android `intent-filter`).
+2. Add the **exact** redirect URI (e.g. `myapp://wallet`) to your project's whitelisted URLs in the
+   UTXOS dashboard. Wildcards and prefix matches are not supported.
+3. Recommended: `npm i react-native-inappbrowser-reborn`. Without it the SDK falls back to opening
+   the external browser and waiting for the deep link.
+4. Prefer an https universal link / app link over a custom scheme where possible: custom schemes
+   can be claimed by other apps on the same device.
+
+How it stays secure: the redirect only carries a one-time `code` and your request's `state`. The
+wallet result itself is stored server-side for 60 seconds and can only be redeemed once, by the
+app that holds the PKCE `code_verifier` generated for that request (RFC 7636 / RFC 8252). Another
+app that intercepts the deep link cannot redeem the code. The `redirectUri` is ignored in browsers,
+which keep using the popup.
+
 ### Initialize the SDK
 
 ```typescript
