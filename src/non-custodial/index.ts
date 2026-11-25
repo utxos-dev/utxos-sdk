@@ -5,6 +5,7 @@ import type {
 } from "../types";
 import axios from "axios";
 import { trackPlatformMetric } from "../internal/metrics";
+import { isSafeAuthRedirect } from "../functions/auth/safe-auth-redirect";
 
 import {
   getStorage,
@@ -589,6 +590,12 @@ export class Web3NonCustodialProvider {
       redirect,
     );
     if (token && redirect) {
+      // `redirect` travels through the URL and can be attacker controlled.
+      if (!isSafeAuthRedirect(redirect)) {
+        return {
+          error: new AuthRouteError("Refusing to redirect to an unsafe URL."),
+        };
+      }
       await this.putInStorage<AuthJwtLocationObject>(AUTH_KEY, { jwt: token });
       await linking.redirectURL(redirect);
       return;

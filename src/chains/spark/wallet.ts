@@ -12,6 +12,8 @@ export type ValidSparkNetwork = "MAINNET" | "REGTEST";
 export type Web3SparkWalletOptions = {
   networkId: 0 | 1;
   appUrl: string;
+  /** App link the wallet returns to (React Native). */
+  redirectUri?: string;
   projectId: string;
   address: string;
   sparkApiUrl: string;
@@ -23,6 +25,7 @@ export type Web3SparkWalletOptions = {
 export class Web3SparkWallet {
   networkId: 0 | 1;
   appUrl: string;
+  redirectUri?: string;
   projectId: string;
   address: string;
   sparkApiUrl: string;
@@ -36,6 +39,7 @@ export class Web3SparkWallet {
   constructor(options: Web3SparkWalletOptions) {
     this.networkId = options.networkId;
     this.appUrl = options.appUrl;
+    this.redirectUri = options.redirectUri;
     this.projectId = options.projectId;
     this.address = options.address;
     this.sparkApiUrl = options.sparkApiUrl;
@@ -133,6 +137,7 @@ export class Web3SparkWallet {
         amountSats: String(amountSats),
       },
       this.appUrl,
+      { redirectUri: this.redirectUri },
     );
 
     if (res.success === false) {
@@ -171,6 +176,7 @@ export class Web3SparkWallet {
         tokenIdentifier: String(tokenIdentifier),
       },
       this.appUrl,
+      { redirectUri: this.redirectUri },
     );
 
     if (res.success === false) {
@@ -199,6 +205,7 @@ export class Web3SparkWallet {
         networkId: String(this.networkId),
       },
       this.appUrl,
+      { redirectUri: this.redirectUri },
     );
 
     if (res.success === false) {
@@ -243,6 +250,7 @@ export class Web3SparkWallet {
         networkId: String(this.networkId),
       },
       this.appUrl,
+      { redirectUri: this.redirectUri },
     );
 
     if (res.success === false) {
@@ -273,6 +281,7 @@ export class Web3SparkWallet {
         message,
       },
       this.appUrl,
+      { redirectUri: this.redirectUri },
     );
 
     if (res.success === false) {

@@ -3,7 +3,13 @@
  * Uses React Native Linking API and optional InAppBrowser for OAuth
  */
 
-import type { LinkingAdapter, AuthCallbackResult } from '../../adapters/types';
+import type {
+  LinkingAdapter,
+  AuthCallbackResult,
+  OpenAuthWindowOptions,
+} from '../../adapters/types';
+import { parseRedirectCallback } from '../../functions/auth/redirect-uri';
+import { safeEqual } from '../../functions/window/native-handoff';
 import type { ReactNativeLinking } from './react-native.types';
 
 // Dynamic import to avoid bundler issues when react-native isn't available
@@ -20,7 +26,12 @@ try {
   // InAppBrowser not installed, will use Linking.openURL
 }
 
+/** How long to wait for the user to come back from the browser. */
+const DEFAULT_CALLBACK_TIMEOUT_MS = 10 * 60 * 1000;
+
 export const linkingAdapter: LinkingAdapter = {
+  supportsRedirectCallback: true,
+
   async openURL(url: string): Promise<void> {
     const canOpen = await Linking.canOpenURL(url);
     if (canOpen) {
@@ -38,26 +49,63 @@ export const linkingAdapter: LinkingAdapter = {
     await this.openURL(url);
   },
 
-  async openAuthWindow(url: string, callbackScheme: string): Promise<AuthCallbackResult> {
-    // If InAppBrowser is available, use it for better UX
+  /**
+   * Open the wallet in the *system* browser and wait for the redirect back to
+   * the app.
+   *
+   * Google (and other identity providers) refuse OAuth inside embedded
+   * WebViews (`disallowed_useragent`), so this must use ASWebAuthenticationSession /
+   * Chrome Custom Tabs (via react-native-inappbrowser-reborn) or the external
+   * browser, never a WebView.
+   *
+   * Only callbacks that match `redirectUri` exactly *and* carry the expected
+   * `state` are accepted; everything else is ignored.
+   */
+  async openAuthWindow(
+    url: string,
+    redirectUri: string,
+    options: OpenAuthWindowOptions = {},
+  ): Promise<AuthCallbackResult> {
+    const expectedState = options.state;
+
+    const toResult = (callbackUrl: string): AuthCallbackResult | null => {
+      const params = parseRedirectCallback(callbackUrl, redirectUri);
+      if (!params) return null;
+      if (expectedState !== undefined) {
+        if (typeof params.state !== 'string' || !safeEqual(params.state, expectedState)) {
+          return null;
+        }
+      }
+      return {
+        code: params.code,
+        state: params.state,
+        error: params.error,
+        errorDescription: params.error_description,
+      };
+    };
+
+    // Preferred: system auth session with a built-in callback interceptor.
     if (InAppBrowser && (await InAppBrowser.isAvailable())) {
       try {
-        const result = await InAppBrowser.openAuth(url, callbackScheme, {
+        const result = await InAppBrowser.openAuth(url, redirectUri, {
+          // iOS: share cookies with Safari so the user's Google session is reused.
+          ephemeralWebSession: false,
+          // Android
           showTitle: false,
           enableUrlBarHiding: true,
           enableDefaultShare: false,
-          ephemeralWebSession: false,
+          showInRecents: false,
         });
 
         if (result.type === 'success' && result.url) {
-          const callbackUrl = new URL(result.url);
-          return {
-            code: callbackUrl.searchParams.get('code') || undefined,
-            state: callbackUrl.searchParams.get('state') || undefined,
-            error: callbackUrl.searchParams.get('error') || undefined,
-            errorDescription: callbackUrl.searchParams.get('error_description') || undefined,
-          };
-        } else if (result.type === 'cancel') {
+          return (
+            toResult(result.url) ?? {
+              error: 'invalid_callback',
+              errorDescription: 'Unexpected callback received from the wallet',
+            }
+          );
+        }
+        if (result.type === 'cancel' || result.type === 'dismiss') {
           return { error: 'cancelled', errorDescription: 'User cancelled authentication' };
         }
         return { error: 'unknown', errorDescription: 'Unknown authentication result' };
@@ -66,29 +114,33 @@ export const linkingAdapter: LinkingAdapter = {
       }
     }
 
-    // Fallback: Open in external browser and wait for deep link
+    // Fallback: external browser, wait for the deep link.
+    const timeoutMs = options.timeoutMs ?? DEFAULT_CALLBACK_TIMEOUT_MS;
     return new Promise((resolve) => {
-      const subscription = Linking.addEventListener('url', (event: { url: string }) => {
-        const callbackUrl = event.url;
-        if (callbackUrl.startsWith(callbackScheme)) {
-          subscription.remove();
-          try {
-            const parsedUrl = new URL(callbackUrl);
-            resolve({
-              code: parsedUrl.searchParams.get('code') || undefined,
-              state: parsedUrl.searchParams.get('state') || undefined,
-              error: parsedUrl.searchParams.get('error') || undefined,
-              errorDescription: parsedUrl.searchParams.get('error_description') || undefined,
-            });
-          } catch {
-            resolve({ error: 'parse_error', errorDescription: 'Failed to parse callback URL' });
-          }
-        }
+      let settled = false;
+      let timer: ReturnType<typeof setTimeout> | null = null;
+      let subscription: { remove(): void } | null = null;
+
+      const finish = (result: AuthCallbackResult) => {
+        if (settled) return;
+        settled = true;
+        if (timer) clearTimeout(timer);
+        subscription?.remove();
+        resolve(result);
+      };
+
+      subscription = Linking.addEventListener('url', (event: { url: string }) => {
+        const result = toResult(event.url);
+        if (result) finish(result);
       });
 
+      timer = setTimeout(
+        () => finish({ error: 'timeout', errorDescription: 'Timed out waiting for the wallet' }),
+        timeoutMs,
+      );
+
       Linking.openURL(url).catch((error: unknown) => {
-        subscription.remove();
-        resolve({ error: 'open_failed', errorDescription: String(error) });
+        finish({ error: 'open_failed', errorDescription: String(error) });
       });
     });
   },
